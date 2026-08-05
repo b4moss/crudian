@@ -26,7 +26,10 @@
     "dist"
   ],
   "scripts": {
-    "test": "bun test"
+    "test": "bun run test:bun-sqlite && bun run test:drizzle && bun run test:prisma",
+    "test:bun-sqlite": "bun test src/bun-sqlite",
+    "test:drizzle": "node --test --experimental-strip-types src/drizzle/**/*.test.ts",
+    "test:prisma": "node --test --experimental-strip-types src/prisma/**/*.test.ts"
   },
   "engines": {
     "node": ">=22",

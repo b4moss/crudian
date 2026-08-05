@@ -60,9 +60,13 @@ import { /* ... */ } from "@b4moss/crudian/bun-sqlite"
 ## ランタイム / テスト
 
 - 対応ランタイム: **Node.js 22+**、および Bun
-- テストランナー: **`bun:test`**（`bun test`）
-- `@b4moss/crudian/bun-sqlite` は Bun 専用 API のため、そのテストは Bun 上で実行する
-- Drizzle / Prisma アダプタは Node 22+ でも利用可能。必要なら後続で Node 上のスモークを足す（テスト本体は bun:test のまま）
+- テストはアダプタごとに、**そのアダプタが動くランタイムで**行う（共通テストの共有はしない）
+
+| アダプタ | ランタイム | テスト |
+|----------|------------|--------|
+| `bun-sqlite` | Bun | `bun:test`（`bun test`） |
+| `drizzle` | Node.js 22+ | `node:test`（`node --test`） |
+| `prisma` | Node.js 22+ | `node:test`（`node --test`） |
 
 ## マイルストーン
 
