@@ -30,8 +30,9 @@ DDD の Repository 層向け CRUD 抽象ライブラリ。
 
 ## パッケージ構成
 
-| パス | 対象 |
-|------|------|
+| パス | npm / 対象 |
+|------|------------|
+| `packages/node-bun/bun-sqlite` | `@b4moss/crudian`（Bun `bun:sqlite`） |
 | `packages/node-bun/drizzle` | Node.js / Bun + Drizzle |
 | `packages/node-bun/prisma` | Node.js / Bun + Prisma |
 | `packages/php/laravel` | PHP Laravel（Eloquent） |
@@ -42,6 +43,6 @@ DDD の Repository 層向け CRUD 抽象ライブラリ。
 
 ## 初期スコープ
 
-まず `packages/node-bun` 配下で Bun SQLite 向け実装を進め、問題なければ他言語・ORM へ展開する。
+まず `packages/node-bun/bun-sqlite`（`@b4moss/crudian`）を実装し、問題なければ他言語・ORM へ展開する。
 
 このドキュメントを仕様の正とする。
