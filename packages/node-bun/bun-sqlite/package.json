@@ -1,0 +1,37 @@
+{
+  "name": "@b4moss/crudian",
+  "version": "0.0.0",
+  "description": "CRUD abstraction for DDD repositories (Bun SQLite)",
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "test": "bun test"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  },
+  "keywords": [
+    "crud",
+    "repository",
+    "sqlite",
+    "bun",
+    "ddd"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/b4m-oss/crudian.git",
+    "directory": "packages/node-bun/bun-sqlite"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
