@@ -30,11 +30,27 @@ DDD の Repository 層向け CRUD 抽象ライブラリ。
 
 ## パッケージ構成
 
-| パス | npm / 対象 |
-|------|------------|
-| `packages/node-bun/bun-sqlite` | `@b4moss/crudian`（Bun `bun:sqlite`） |
-| `packages/node-bun/drizzle` | Node.js / Bun + Drizzle |
-| `packages/node-bun/prisma` | Node.js / Bun + Prisma |
+### JS（単一 npm パッケージ、実装は TypeScript）
+
+パッケージ名: **`@b4moss/crudian`**（`packages/js`）
+
+Node.js / Bun など JS エコシステム向け。ディレクトリ名の `js` は広範な呼称であり、実装言語は TypeScript。
+
+| subpath | 対象 |
+|---------|------|
+| `@b4moss/crudian` | 共有契約・型 |
+| `@b4moss/crudian/bun-sqlite` | Bun `bun:sqlite` |
+| `@b4moss/crudian/drizzle` | Drizzle |
+| `@b4moss/crudian/prisma` | Prisma |
+
+```ts
+import { /* ... */ } from "@b4moss/crudian/bun-sqlite"
+```
+
+### 他言語
+
+| パス | 対象 |
+|------|------|
 | `packages/php/laravel` | PHP Laravel（Eloquent） |
 | `packages/php/pdo-mysql` | 生 PHP + PDO MySQL |
 | `packages/php/pdo-postgres` | 生 PHP + PDO Postgres |
@@ -43,6 +59,6 @@ DDD の Repository 層向け CRUD 抽象ライブラリ。
 
 ## 初期スコープ
 
-まず `packages/node-bun/bun-sqlite`（`@b4moss/crudian`）を実装し、問題なければ他言語・ORM へ展開する。
+まず `@b4moss/crudian/bun-sqlite` を実装し、問題なければ他アダプタ・他言語へ展開する。
 
 このドキュメントを仕様の正とする。

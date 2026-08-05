@@ -1,13 +1,25 @@
 {
   "name": "@b4moss/crudian",
   "version": "0.0.0",
-  "description": "CRUD abstraction for DDD repositories (Bun SQLite)",
+  "description": "CRUD abstraction for DDD repositories",
   "type": "module",
   "license": "MIT",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./bun-sqlite": {
+      "types": "./dist/bun-sqlite/index.d.ts",
+      "import": "./dist/bun-sqlite/index.js"
+    },
+    "./drizzle": {
+      "types": "./dist/drizzle/index.d.ts",
+      "import": "./dist/drizzle/index.js"
+    },
+    "./prisma": {
+      "types": "./dist/prisma/index.d.ts",
+      "import": "./dist/prisma/index.js"
     }
   },
   "files": [
@@ -24,12 +36,14 @@
     "repository",
     "sqlite",
     "bun",
+    "drizzle",
+    "prisma",
     "ddd"
   ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/b4m-oss/crudian.git",
-    "directory": "packages/node-bun/bun-sqlite"
+    "directory": "packages/js"
   },
   "publishConfig": {
     "access": "public"
