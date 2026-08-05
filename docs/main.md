@@ -57,8 +57,23 @@ import { /* ... */ } from "@b4moss/crudian/bun-sqlite"
 | `packages/php/pdo-sqlite` | 生 PHP + PDO SQLite |
 | `packages/go/gorm` | Go + GORM |
 
+## ランタイム / テスト
+
+- 対応ランタイム: **Node.js 22+**、および Bun
+- テストランナー: **`bun:test`**（`bun test`）
+- `@b4moss/crudian/bun-sqlite` は Bun 専用 API のため、そのテストは Bun 上で実行する
+- Drizzle / Prisma アダプタは Node 22+ でも利用可能。必要なら後続で Node 上のスモークを足す（テスト本体は bun:test のまま）
+
+## マイルストーン
+
+| バージョン | 内容 |
+|------------|------|
+| **v0.1.0** | `bun:sqlite` で全メソッド実装 |
+| **v0.2.0** | `bun:sqlite` の単体・結合テストと DB インメモリテストが通ること |
+| **v0.3.0** | Drizzle / Prisma で同等の実装とテストが通ること |
+
 ## 初期スコープ
 
-まず `@b4moss/crudian/bun-sqlite` を実装し、問題なければ他アダプタ・他言語へ展開する。
+まず `@b4moss/crudian/bun-sqlite` を実装し（v0.1.0）、テスト整備（v0.2.0）のあと他アダプタへ展開する（v0.3.0）。
 
 このドキュメントを仕様の正とする。
