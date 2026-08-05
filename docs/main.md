@@ -30,9 +30,11 @@ DDD の Repository 層向け CRUD 抽象ライブラリ。
 
 ## パッケージ構成
 
-### Node.js / Bun（単一 npm パッケージ）
+### JS（単一 npm パッケージ、実装は TypeScript）
 
-パッケージ名: **`@b4moss/crudian`**（`packages/node-bun`）
+パッケージ名: **`@b4moss/crudian`**（`packages/js`）
+
+Node.js / Bun など JS エコシステム向け。ディレクトリ名の `js` は広範な呼称であり、実装言語は TypeScript。
 
 | subpath | 対象 |
 |---------|------|

@@ -43,7 +43,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/b4m-oss/crudian.git",
-    "directory": "packages/node-bun"
+    "directory": "packages/js"
   },
   "publishConfig": {
     "access": "public"
