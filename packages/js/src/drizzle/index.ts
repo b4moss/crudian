@@ -1,0 +1,5 @@
+/**
+ * Drizzle adapter for @b4moss/crudian.
+ * Import via: `import { ... } from "@b4moss/crudian/drizzle"`
+ */
+export {}
