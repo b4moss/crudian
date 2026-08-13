@@ -1,6 +1,6 @@
 {
   "name": "@b4moss/crudian",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "CRUD abstraction for DDD repositories",
   "type": "module",
   "license": "MIT",
