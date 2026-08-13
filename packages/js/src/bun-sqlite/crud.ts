@@ -3,6 +3,7 @@ import {
   CrudianError,
   assertString,
   type DeleteQuery,
+  type DuplicateQuery,
   type ReadQuery,
   type Row,
   type SearchQuery,
@@ -25,6 +26,16 @@ export type BunSqliteCrud = {
     query: UpdateQuery,
   ): T | null
   delete(table: string, query: DeleteQuery): number
+  upsert<T extends Row = Row>(table: string, cols: Record<string, unknown>): T
+  duplicate<T extends Row = Row>(table: string, query: DuplicateQuery): T | null
+  bulkCreate(table: string, rows: Record<string, unknown>[]): number
+  bulkUpdate(
+    table: string,
+    cols: Record<string, unknown>,
+    query: UpdateQuery,
+  ): number
+  bulkDelete(table: string, query: DeleteQuery): number
+  bulkUpsert(table: string, rows: Record<string, unknown>[]): number
   search<T extends Row = Row>(table: string, query?: SearchQuery): SearchResult<T>
   list<T extends Row = Row>(table: string, query?: SearchQuery): SearchResult<T>
   transaction<T>(fn: () => T): T
@@ -191,6 +202,123 @@ export function createCrud(db: Database): BunSqliteCrud {
 
     list<T extends Row = Row>(table: string, query?: SearchQuery): SearchResult<T> {
       return crud.search<T>(table, query)
+    },
+
+    upsert<T extends Row = Row>(table: string, cols: Record<string, unknown>): T {
+      assertString(table, "table")
+      if (cols == null || typeof cols !== "object" || Array.isArray(cols)) {
+        throw new CrudianError("cols must be an object")
+      }
+      const keys = Object.keys(cols)
+      if (keys.length === 0) {
+        throw new CrudianError("cols must not be empty")
+      }
+      if (!Object.prototype.hasOwnProperty.call(cols, "id")) {
+        throw new CrudianError("upsert requires cols.id")
+      }
+
+      const id = cols.id
+      const existing = crud.read<T>(table, { where: { type: "cond", op: "eq", column: "id", value: id } })
+      if (existing != null) {
+        const { id: _id, ...patch } = cols
+        if (Object.keys(patch).length === 0) return existing
+        const updated = crud.update<T>(table, patch, {
+          where: { type: "cond", op: "eq", column: "id", value: id },
+        })
+        if (updated == null) {
+          throw new CrudianError("upsert update failed")
+        }
+        return updated
+      }
+
+      return crud.create<T>(table, cols)
+    },
+
+    duplicate<T extends Row = Row>(table: string, query: DuplicateQuery): T | null {
+      assertString(table, "table")
+      requireWhere(query, "duplicate")
+      const source = crud.read<T>(table, { where: query.where })
+      if (source == null) return null
+
+      const { id: _id, ...rest } = source
+      const overrides =
+        query.overrides != null &&
+        typeof query.overrides === "object" &&
+        !Array.isArray(query.overrides)
+          ? query.overrides
+          : {}
+      const cols = { ...rest, ...overrides }
+      delete cols.id
+      return crud.create<T>(table, cols)
+    },
+
+    bulkCreate(table: string, rows: Record<string, unknown>[]): number {
+      assertString(table, "table")
+      if (!Array.isArray(rows)) {
+        throw new CrudianError("rows must be an array")
+      }
+      if (rows.length === 0) return 0
+      let count = 0
+      for (const row of rows) {
+        if (row == null || typeof row !== "object" || Array.isArray(row)) {
+          throw new CrudianError("each row must be an object")
+        }
+        crud.create(table, row)
+        count += 1
+      }
+      return count
+    },
+
+    bulkUpdate(
+      table: string,
+      cols: Record<string, unknown>,
+      query: UpdateQuery,
+    ): number {
+      assertString(table, "table")
+      requireWhere(query, "bulkUpdate")
+      if (cols == null || typeof cols !== "object" || Array.isArray(cols)) {
+        throw new CrudianError("cols must be an object")
+      }
+      const keys = Object.keys(cols)
+      if (keys.length === 0) {
+        throw new CrudianError("cols must not be empty")
+      }
+
+      const tbl = quoteIdent(table)
+      const where = compileWhere(resolveWhere(query.where))
+      if (!where.sql) {
+        throw new CrudianError("bulkUpdate requires where")
+      }
+      const sets = keys.map((k) => `${quoteIdent(k)} = ?`).join(", ")
+      const args = [...keys.map((k) => cols[k]), ...where.args]
+      const result = db
+        .query(`UPDATE ${tbl} SET ${sets} WHERE ${where.sql}`)
+        .run(...bindings(args))
+      return Number(result.changes ?? 0)
+    },
+
+    bulkDelete(table: string, query: DeleteQuery): number {
+      return crud.delete(table, query)
+    },
+
+    bulkUpsert(table: string, rows: Record<string, unknown>[]): number {
+      assertString(table, "table")
+      if (!Array.isArray(rows)) {
+        throw new CrudianError("rows must be an array")
+      }
+      if (rows.length === 0) return 0
+      let count = 0
+      for (const row of rows) {
+        if (row == null || typeof row !== "object" || Array.isArray(row)) {
+          throw new CrudianError("each row must be an object")
+        }
+        if (!Object.prototype.hasOwnProperty.call(row, "id")) {
+          throw new CrudianError("bulkUpsert requires each row to have id")
+        }
+        crud.upsert(table, row)
+        count += 1
+      }
+      return count
     },
 
     transaction<T>(fn: () => T): T {
