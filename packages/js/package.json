@@ -7,26 +7,32 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     },
     "./bun-sqlite": {
       "types": "./dist/bun-sqlite/index.d.ts",
-      "import": "./dist/bun-sqlite/index.js"
+      "bun": "./dist/bun-sqlite/index.js",
+      "import": "./dist/bun-sqlite/node-stub.js",
+      "default": "./dist/bun-sqlite/node-stub.js"
     },
     "./drizzle": {
       "types": "./dist/drizzle/index.d.ts",
-      "import": "./dist/drizzle/index.js"
+      "import": "./dist/drizzle/index.js",
+      "default": "./dist/drizzle/index.js"
     },
     "./prisma": {
       "types": "./dist/prisma/index.d.ts",
-      "import": "./dist/prisma/index.js"
+      "import": "./dist/prisma/index.js",
+      "default": "./dist/prisma/index.js"
     }
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "test": "bun run test:bun-sqlite && bun run test:drizzle && bun run test:prisma",
+    "build": "tsc -p tsconfig.json",
+    "test": "bun run test:bun-sqlite",
     "test:bun-sqlite": "bun test src/bun-sqlite",
     "test:drizzle": "node --test --experimental-strip-types src/drizzle/**/*.test.ts",
     "test:prisma": "node --test --experimental-strip-types src/prisma/**/*.test.ts"
@@ -34,6 +40,10 @@
   "engines": {
     "node": ">=22",
     "bun": ">=1.0.0"
+  },
+  "devDependencies": {
+    "bun-types": "^1.2.0",
+    "typescript": "^5.8.0"
   },
   "keywords": [
     "crud",
@@ -46,7 +56,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/b4m-oss/crudian.git",
+    "url": "git+https://github.com/b4moss/crudian.git",
     "directory": "packages/js"
   },
   "publishConfig": {
