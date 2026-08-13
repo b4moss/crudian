@@ -32,15 +32,17 @@ iron-rule に準拠し、単表 + カラム map + 条件、という粒度を維
 
 ```ts
 create(table, cols)
-read(table, query)          // 1件 or null
-list / search(table, query) // rows + cursor
+read<T>(table, query)          // 1件 or null
+list / search<T>(table, query) // 実質同義（片方正式・片方別名）、rows + cursor
 update / delete / upsert / duplicate
 bulkCreate / bulkUpdate / bulkDelete / bulkUpsert
 ```
 
-- Go の `scan(*sql.Rows)` ではなく、JS では `Record<string, unknown>`（またはその配列）を返す
-- JOIN 等の非 CRUD 用に、生の `Database`（`bun:sqlite`）を露出する（iron-rule の `*sql.DB` 露出と同趣旨）
+- 行データはジェネリクスで型付けする（例: `read<T>(...)`）
+- 呼び出し側が作った `Database` を注入する（パスや `:memory:` の内部生成はしない）
+- JOIN 等の非 CRUD 用に、生の `Database`（`bun:sqlite`）を最初から公開する（iron-rule の `*sql.DB` 露出と同趣旨）
 - ドメイン Repository は生 SQL を散在させず、本パッケージ経由とする（charter の薄い DDD）
+- JS の契約は PHP/Go にも写せる共通語彙として先に寄せる
 
 ### 意図的な非対応
 
@@ -49,40 +51,53 @@ bulkCreate / bulkUpdate / bulkDelete / bulkUpsert
 - offset ページング（cursor のみ）
 - アダプタ横断の共有テストスイート（bun-sqlite は `bun:test` のみ）
 
-### 実装前に決める事項（仕様穴）
+### 決定事項（2026-08-13）
 
-実装開始前に `docs/main.md` へ反映する。
+| # | 項目 | 決定 |
+|---|------|------|
+| 1 | `read` 未ヒット | `null` を返す（throw しない） |
+| 2 | `list` / `search` | 実質同じ。片方を正式、もう片方を薄い別名 |
+| 3 | cursor | 当面 `id` 昇順固定 |
+| 4 | 条件 | ネスト可能な and/or 条件木 |
+| 5 | upsert conflict | 主キー（`id`）前提 |
+| 6 | 行型 | ジェネリクス |
+| 7 | DB 生成 | 呼び出し側の `Database` を注入 |
+| 8 | 生 `Database` | 最初から公開 |
+| 9 | npm 配布 | 単一パッケージ + `dist`。subpath / `exports` 条件で Bun と Node を出し分ける |
+| 10 | 契約の寄せ方 | PHP/Go にも写せる共通語彙として先に寄せる |
+
+詳細は [`docs/main.md`](../main.md) の「契約決定事項」も参照。
+
+### まだ決めていない事項
 
 | 項目 | 論点 |
 |------|------|
-| cursor | キーセットの形（例: `id` 昇順）。nook / iron-rule の offset とは意図的に異なる新標準 |
-| and / or | iron-rule は実質 AND のみ。ネスト可能な条件木か、1 段のみか |
-| upsert / bulkUpsert | conflict 対象（PK か、unique 列の指定か） |
-| エラー | `NotFound` / `Invalid` / `Conflict` 程度に固定 |
+| エラー | `Invalid` / `Conflict` 等の種別と throw 方針（`read` 未ヒットは `null` で確定済み） |
 | 識別子 | テーブル・カラム名のサニタイズ（iron-rule の ident 制約相当） |
+| `list` / `search` の正式名 | どちらを正式 API にするか |
 
 ## 進め方
 
 ### Phase A — 契約固定
 
-1. `packages/js/src/index.ts` に型・エラー・演算子を置く（実装は空でよい）
-2. iron-rule のメソッド一覧と `docs/main.md` を突き合わせ、上記仕様穴を文書化する
+1. `packages/js/src/index.ts` に型・エラー・演算子・条件木を置く（実装は空でよい）
+2. 残りの未決事項（エラー種別、識別子、`list`/`search` の正式名）を `docs/main.md` に反映する
 
 ### Phase B — bun-sqlite 実装（v0.1.0 / v0.2.0）
 
 Issue 順を基本とし、**メソッド単位で実装とインメモリ DB テストを同時に閉じる**（v0.1 と v0.2 を厳密分離しない）。
 
-1. 基本 CRUD + `list`（cursor）
-2. `upsert` / `duplicate`
+1. 基本 CRUD + `list`/`search`（cursor: `id` 昇順）
+2. `upsert` / `duplicate`（conflict は `id`）
 3. `bulk*`
-4. `search`（比較演算子・and/or・複合条件・cursor）
+4. 条件木（比較演算子・ネスト可能な and/or）を `search` に接続
 
-テストは Bun + `bun:test`、DB は `:memory:`。  
+テストは Bun + `bun:test`、DB は呼び出し側注入の `:memory:`。  
 ライブラリ側が実書き込みを担保し、プロダクト側 Repository テストは Mock でよい、という責任分界を崩さない。
 
 ### Phase C — パッケージとして使える形
 
-1. `exports` / ビルド（または Bun 向け配布形態）を整える
+1. `dist` ビルドと `exports`（Bun / Node の出し分けを含む）を整える
 2. Bun 向けテンプレートリポジトリへ 1 件試し食いし、ドメイン Repository が生 SQL なしで書けることを確認する
 3. 問題なければ v0.1.0 タグ
 
@@ -90,8 +105,8 @@ Issue 順を基本とし、**メソッド単位で実装とインメモリ DB �
 
 ### Phase D — 他アダプタ・他言語
 
-1. 契約が安定してから drizzle / prisma（Node.js 22 + `node:test`）
-2. PHP（Composer / Laravel）・Go（module）は、iron-rule / nook からの移植として、JS 契約固定後に進める
+1. JS 契約（共通語彙）が安定してから drizzle / prisma（Node.js 22 + `node:test`）
+2. PHP（Composer / Laravel）・Go（module）は、同じ語彙への移植として進める
 
 ## まとめ
 
