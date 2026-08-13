@@ -162,5 +162,6 @@ const crud = createCrud(db)
 
 - 設計と進め方: [`docs/plans/bun-sqlite-adapter.md`](./plans/bun-sqlite-adapter.md)
 - ロードマップ: [`docs/plans/roadmap.md`](./plans/roadmap.md)
+- テスト仕様: [`docs/tests/`](./tests/README.md)
 
 このドキュメントを仕様の正とする。
