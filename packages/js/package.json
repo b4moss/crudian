@@ -28,10 +28,13 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE",
+    "README.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "prepublishOnly": "npm run build",
     "prisma:generate": "prisma generate --schema prisma/schema.prisma",
     "test": "bun run test:bun-sqlite && bun run test:drizzle && bun run test:prisma",
     "test:bun-sqlite": "bun test src/bun-sqlite",
