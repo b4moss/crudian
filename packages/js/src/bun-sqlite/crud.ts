@@ -3,6 +3,7 @@ import {
   CrudianError,
   assertString,
   type DeleteQuery,
+  type DuplicateQuery,
   type ReadQuery,
   type Row,
   type SearchQuery,
@@ -25,6 +26,8 @@ export type BunSqliteCrud = {
     query: UpdateQuery,
   ): T | null
   delete(table: string, query: DeleteQuery): number
+  upsert<T extends Row = Row>(table: string, cols: Record<string, unknown>): T
+  duplicate<T extends Row = Row>(table: string, query: DuplicateQuery): T | null
   search<T extends Row = Row>(table: string, query?: SearchQuery): SearchResult<T>
   list<T extends Row = Row>(table: string, query?: SearchQuery): SearchResult<T>
   transaction<T>(fn: () => T): T
@@ -191,6 +194,54 @@ export function createCrud(db: Database): BunSqliteCrud {
 
     list<T extends Row = Row>(table: string, query?: SearchQuery): SearchResult<T> {
       return crud.search<T>(table, query)
+    },
+
+    upsert<T extends Row = Row>(table: string, cols: Record<string, unknown>): T {
+      assertString(table, "table")
+      if (cols == null || typeof cols !== "object" || Array.isArray(cols)) {
+        throw new CrudianError("cols must be an object")
+      }
+      const keys = Object.keys(cols)
+      if (keys.length === 0) {
+        throw new CrudianError("cols must not be empty")
+      }
+      if (!Object.prototype.hasOwnProperty.call(cols, "id")) {
+        throw new CrudianError("upsert requires cols.id")
+      }
+
+      const id = cols.id
+      const existing = crud.read<T>(table, { where: { type: "cond", op: "eq", column: "id", value: id } })
+      if (existing != null) {
+        const { id: _id, ...patch } = cols
+        if (Object.keys(patch).length === 0) return existing
+        const updated = crud.update<T>(table, patch, {
+          where: { type: "cond", op: "eq", column: "id", value: id },
+        })
+        if (updated == null) {
+          throw new CrudianError("upsert update failed")
+        }
+        return updated
+      }
+
+      return crud.create<T>(table, cols)
+    },
+
+    duplicate<T extends Row = Row>(table: string, query: DuplicateQuery): T | null {
+      assertString(table, "table")
+      requireWhere(query, "duplicate")
+      const source = crud.read<T>(table, { where: query.where })
+      if (source == null) return null
+
+      const { id: _id, ...rest } = source
+      const overrides =
+        query.overrides != null &&
+        typeof query.overrides === "object" &&
+        !Array.isArray(query.overrides)
+          ? query.overrides
+          : {}
+      const cols = { ...rest, ...overrides }
+      delete cols.id
+      return crud.create<T>(table, cols)
     },
 
     transaction<T>(fn: () => T): T {
