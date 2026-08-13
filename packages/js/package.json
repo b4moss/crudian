@@ -32,17 +32,40 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "bun run test:bun-sqlite",
+    "prisma:generate": "prisma generate --schema prisma/schema.prisma",
+    "test": "bun run test:bun-sqlite && bun run test:drizzle && bun run test:prisma",
     "test:bun-sqlite": "bun test src/bun-sqlite",
-    "test:drizzle": "node --test --experimental-strip-types src/drizzle/**/*.test.ts",
-    "test:prisma": "node --test --experimental-strip-types src/prisma/**/*.test.ts"
+    "test:drizzle": "tsx --test src/drizzle/crud.test.ts",
+    "test:prisma": "bun run prisma:generate && tsx --test src/prisma/crud.test.ts"
   },
   "engines": {
     "node": ">=22",
     "bun": ">=1.0.0"
   },
+  "peerDependencies": {
+    "@prisma/client": "^6.0.0",
+    "better-sqlite3": "^11.0.0",
+    "drizzle-orm": "^0.39.0 || ^0.40.0 || ^0.41.0 || ^0.44.0"
+  },
+  "peerDependenciesMeta": {
+    "@prisma/client": {
+      "optional": true
+    },
+    "better-sqlite3": {
+      "optional": true
+    },
+    "drizzle-orm": {
+      "optional": true
+    }
+  },
   "devDependencies": {
+    "@prisma/client": "^6.14.0",
+    "@types/better-sqlite3": "^7.6.13",
+    "better-sqlite3": "^11.10.0",
     "bun-types": "^1.2.0",
+    "drizzle-orm": "^0.44.4",
+    "prisma": "^6.14.0",
+    "tsx": "^4.23.12",
     "typescript": "^5.8.0"
   },
   "keywords": [
