@@ -31,16 +31,23 @@ bun-sqlite を参照実装とし、他アダプタはそれとの互換で測る
 iron-rule に準拠し、単表 + カラム map + 条件、という粒度を維持する。
 
 ```ts
-create(table, cols)
-read<T>(table, query)          // 1件 or null
-list / search<T>(table, query) // 実質同義（片方正式・片方別名）、rows + cursor
-update / delete / upsert / duplicate
+create(table, cols)                 // 対象行を返す
+read<T>(table, query)               // 1件 or null
+search<T>(table, query)             // 正式。{ items, nextCursor, hasMore }
+list<T>(table, query)               // search の別名
+update / upsert / duplicate         // 対象行を返す
+delete                              // 影響件数
 bulkCreate / bulkUpdate / bulkDelete / bulkUpsert
+transaction(fn)                     // ヘルパ（自動 TX は張らない）
 ```
 
 - 行データはジェネリクスで型付けする（例: `read<T>(...)`）
+- 条件はビルダー API を主とし、and/or 木は内部表現
+- 演算子: `eq/ne/lt/gt/lte/gte/in/like/isNull/isNotNull`
 - 呼び出し側が作った `Database` を注入する（パスや `:memory:` の内部生成はしない）
-- JOIN 等の非 CRUD 用に、生の `Database`（`bun:sqlite`）を最初から公開する（iron-rule の `*sql.DB` 露出と同趣旨）
+- JOIN 等の非 CRUD 用に、生の `Database`（`bun:sqlite`）を最初から公開する
+- 識別子は文字列必須のみ（形式検証なし）。不正時は SQLite エラー
+- 独自エラーは最小限。他は SQLite 例外を伝播
 - ドメイン Repository は生 SQL を散在させず、本パッケージ経由とする（charter の薄い DDD）
 - JS の契約は PHP/Go にも写せる共通語彙として先に寄せる
 
@@ -50,8 +57,11 @@ bulkCreate / bulkUpdate / bulkDelete / bulkUpsert
 - 全文検索
 - offset ページング（cursor のみ）
 - アダプタ横断の共有テストスイート（bun-sqlite は `bun:test` のみ）
+- ライブラリ内部での自動トランザクション（ヘルパは提供する）
 
 ### 決定事項（2026-08-13）
+
+#### 第1弾
 
 | # | 項目 | 決定 |
 |---|------|------|
@@ -66,38 +76,53 @@ bulkCreate / bulkUpdate / bulkDelete / bulkUpsert
 | 9 | npm 配布 | 単一パッケージ + `dist`。subpath / `exports` 条件で Bun と Node を出し分ける |
 | 10 | 契約の寄せ方 | PHP/Go にも写せる共通語彙として先に寄せる |
 
+#### 第2弾
+
+| # | 項目 | 決定 |
+|---|------|------|
+| 1 | 正式 API 名 | `search` を正式、`list` は別名 |
+| 2 | 条件 API | ビルダーを主とし、木構造は内部表現 |
+| 3 | 演算子 | `eq/ne/lt/gt/lte/gte/in/like` + `isNull` / `isNotNull` |
+| 4 | cursor レスポンス | `{ items, nextCursor, hasMore }` |
+| 5 | 書き込み戻り値 | `create`/`update`/`upsert`/`duplicate` は対象行、`delete` は影響件数 |
+| 6 | エラー | 独自は最小限。他は SQLite 例外を伝播 |
+| 7 | 識別子 | 形式検証なし（文字列必須のみ） |
+| 8 | トランザクション | 自動では張らない。`transaction()` ヘルパを同時実装 |
+| 9 | ビルド | `tsc` で `dist` を生成 |
+| 10 | Node からの誤 import | 読み込み時に「誤って import していませんか？」と明示エラー |
+
 詳細は [`docs/main.md`](../main.md) の「契約決定事項」も参照。
 
-### まだ決めていない事項
+### まだ決めていない事項（低優先）
 
 | 項目 | 論点 |
 |------|------|
-| エラー | `Invalid` / `Conflict` 等の種別と throw 方針（`read` 未ヒットは `null` で確定済み） |
-| 識別子 | テーブル・カラム名のサニタイズ（iron-rule の ident 制約相当） |
-| `list` / `search` の正式名 | どちらを正式 API にするか |
+| テスト用スキーマ | テスト内 DDL か fixture か |
+| テンプレ試し食い | v0.1.0 の必須ゲートにするか |
+| bulk 系の戻り値細部 | 行配列か件数か（単発書き込みは行返しで確定） |
 
 ## 進め方
 
 ### Phase A — 契約固定
 
-1. `packages/js/src/index.ts` に型・エラー・演算子・条件木を置く（実装は空でよい）
-2. 残りの未決事項（エラー種別、識別子、`list`/`search` の正式名）を `docs/main.md` に反映する
+1. `packages/js/src/index.ts` に型・ビルダー・演算子・`transaction` シグネチャを置く
+2. 決定済み事項に沿い、必要なら `docs/main.md` を微修正する
 
 ### Phase B — bun-sqlite 実装（v0.1.0 / v0.2.0）
 
 Issue 順を基本とし、**メソッド単位で実装とインメモリ DB テストを同時に閉じる**（v0.1 と v0.2 を厳密分離しない）。
 
-1. 基本 CRUD + `list`/`search`（cursor: `id` 昇順）
-2. `upsert` / `duplicate`（conflict は `id`）
+1. 基本 CRUD + `search`/`list`（cursor: `id` 昇順、レスポンス形固定）
+2. `upsert` / `duplicate`（conflict は `id`）+ `transaction` ヘルパ
 3. `bulk*`
-4. 条件木（比較演算子・ネスト可能な and/or）を `search` に接続
+4. 条件ビルダー（演算子・ネスト可能な and/or）を `search` に接続
 
 テストは Bun + `bun:test`、DB は呼び出し側注入の `:memory:`。  
 ライブラリ側が実書き込みを担保し、プロダクト側 Repository テストは Mock でよい、という責任分界を崩さない。
 
 ### Phase C — パッケージとして使える形
 
-1. `dist` ビルドと `exports`（Bun / Node の出し分けを含む）を整える
+1. `tsc` による `dist` と `exports`（Bun / Node の出し分け、誤 import 明示エラー）を整える
 2. Bun 向けテンプレートリポジトリへ 1 件試し食いし、ドメイン Repository が生 SQL なしで書けることを確認する
 3. 問題なければ v0.1.0 タグ
 
