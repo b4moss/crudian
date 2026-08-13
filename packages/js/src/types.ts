@@ -30,3 +30,8 @@ export type DeleteQuery = {
 export type UpdateQuery = {
   where: WhereInput
 }
+
+export type DuplicateQuery = {
+  where: WhereInput
+  overrides?: Record<string, unknown>
+}
