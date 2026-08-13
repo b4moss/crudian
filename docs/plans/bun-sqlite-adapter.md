@@ -1,7 +1,8 @@
 # bun:sqlite Adapter — 設計と進め方
 
 `@b4moss/crudian/bun-sqlite` を最初の参照実装とする方針のメモ。  
-仕様の正は [`docs/main.md`](../main.md)。本ドキュメントは実装に入る前の設計・進め方を固定する。
+仕様の正は [`docs/main.md`](../main.md)。マイルストーン割当は [`roadmap.md`](./roadmap.md)。  
+本ドキュメントは実装に入る前の設計・進め方を固定する。
 
 ## 製品意図（前提）
 
@@ -118,30 +119,25 @@ crud.transaction(fn)                // ヘルパ（自動 TX は張らない）
 1. `packages/js/src/index.ts` に型・ビルダー・演算子・`createCrud` / `transaction` シグネチャを置く
 2. 決定済み事項に沿い、必要なら `docs/main.md` を微修正する
 
-### Phase B — bun-sqlite 実装（v0.1.0 / v0.2.0）
+### Phase B — v0.1.0 Core
 
-Issue 順を基本とし、**メソッド単位で実装とインメモリ DB テストを同時に閉じる**（v0.1 と v0.2 を厳密分離しない）。
+詳細は [`roadmap.md`](./roadmap.md)。要約:
 
-1. 基本 CRUD + `search`/`list`（cursor: `id` 昇順、レスポンス形固定）
-2. `upsert` / `duplicate`（conflict は `id`）+ `transaction` ヘルパ
-3. `bulk*`
-4. 条件ビルダー（演算子・ネスト可能な and/or）を `search` に接続
+1. 基本 CRUD + `search`/`list` + 条件ビルダー + `transaction`
+2. 各機能のインメモリテスト
+3. `tsc` / `exports` / 誤 import ガード
 
-テストは Bun + `bun:test`、DB は呼び出し側注入の `:memory:`。  
-ライブラリ側が実書き込みを担保し、プロダクト側 Repository テストは Mock でよい、という責任分界を崩さない。
+### Phase C — v0.2.0 Extended writes
 
-### Phase C — パッケージとして使える形
-
-1. `tsc` による `dist` と `exports`（Bun / Node の出し分け、誤 import 明示エラー）を整える
-2. Bun 向けテンプレートリポジトリへ 1 件試し食いし、ドメイン Repository が生 SQL なしで書けることを確認する
-3. 問題なければ v0.1.0 タグ
+1. `upsert` / `duplicate` / `bulk*` + テスト
+2. Bun テンプレ試し食い（推奨）→ タグ
 
 成功条件: **Bun テンプレのドメイン Repository が、単表 CRUD について生 SQL を書かずに済むこと。**
 
-### Phase D — 他アダプタ・他言語
+### Phase D — v0.3.0 他アダプタ・他言語
 
-1. JS 契約（共通語彙）が安定してから drizzle / prisma（Node.js 22 + `node:test`）
-2. PHP（Composer / Laravel）・Go（module）は、同じ語彙への移植として進める
+1. drizzle / prisma（Node.js 22 + `node:test`）
+2. PHP / Go は契約語彙が安定したあとの後続
 
 ## まとめ
 

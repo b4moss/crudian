@@ -129,10 +129,12 @@ const crud = createCrud(db)
 
 ## マイルストーン
 
+機能単位で実装とインメモリテストを同時に閉じる。詳細は [`docs/plans/roadmap.md`](./plans/roadmap.md)。
+
 | バージョン | 内容 |
 |------------|------|
-| **v0.1.0** | `bun:sqlite` で全メソッド実装 |
-| **v0.2.0** | `bun:sqlite` の単体・結合テストと DB インメモリテストが通ること |
+| **v0.1.0** | Core CRUD Trait（`createCrud` / 基本 CRUD / `search`・`list` / 条件ビルダー / `transaction` / 梱包骨格 + テスト） |
+| **v0.2.0** | Extended writes（`upsert` / `duplicate` / `bulk*` + テスト。Bun テンプレ試し食いは推奨） |
 | **v0.3.0** | Drizzle / Prisma で同等の実装とテストが通ること |
 
 ## 配布
@@ -147,8 +149,9 @@ const crud = createCrud(db)
 
 ## 初期スコープ
 
-まず `@b4moss/crudian/bun-sqlite` を実装し（v0.1.0）、テスト整備（v0.2.0）のあと他アダプタへ展開する（v0.3.0）。
+まず `@b4moss/crudian/bun-sqlite` の Core（v0.1.0）→ Extended writes（v0.2.0）のあと、他アダプタへ展開する（v0.3.0）。
 
-設計と進め方: [`docs/plans/bun-sqlite-adapter.md`](./plans/bun-sqlite-adapter.md)
+- 設計と進め方: [`docs/plans/bun-sqlite-adapter.md`](./plans/bun-sqlite-adapter.md)
+- ロードマップ: [`docs/plans/roadmap.md`](./plans/roadmap.md)
 
 このドキュメントを仕様の正とする。
