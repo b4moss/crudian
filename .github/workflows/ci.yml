@@ -5,10 +5,6 @@ on:
     branches:
       - develop
       - "dev-v*"
-  push:
-    branches:
-      - develop
-      - "dev-v*"
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -42,3 +38,33 @@ jobs:
 
       - name: Build
         run: bun run build
+
+  node-adapters:
+    name: packages/js (drizzle / prisma)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: packages/js
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Test drizzle
+        run: bun run test:drizzle
+
+      - name: Test prisma
+        run: bun run test:prisma
