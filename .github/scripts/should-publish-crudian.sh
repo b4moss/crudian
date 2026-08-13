@@ -26,18 +26,23 @@ skip() {
   exit 0
 }
 
-TAG="$(git tag --points-at HEAD | grep -E '^v[0-9]' | sort -V | tail -n 1 || true)"
-if [[ -z "$TAG" ]]; then
-  skip "No v* tag points at HEAD; skip npm publish."
-fi
-
-TAG_VER="${TAG#v}"
+# Accept a v* tag on HEAD or on an ancestor (merge commits onto release
+# usually do not carry the tag themselves).
 PKG_VER="$(node -p "require('${PKG_DIR}/package.json').version")"
-if [[ "$TAG_VER" != "$PKG_VER" ]]; then
-  echo "Tag ${TAG} does not match packages/js version ${PKG_VER}."
-  exit 1
+TAG="v${PKG_VER}"
+
+if ! git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+  skip "No git tag ${TAG} for packages/js version ${PKG_VER}; skip npm publish."
 fi
 
+TAG_COMMIT="$(git rev-list -n 1 "${TAG}")"
+HEAD_COMMIT="$(git rev-parse HEAD)"
+if [[ "$TAG_COMMIT" != "$HEAD_COMMIT" ]] &&
+  ! git merge-base --is-ancestor "$TAG_COMMIT" "$HEAD_COMMIT"; then
+  skip "Tag ${TAG} (${TAG_COMMIT}) is not an ancestor of HEAD; skip npm publish."
+fi
+
+echo "Using tag ${TAG} at ${TAG_COMMIT} (HEAD=${HEAD_COMMIT})."
 emit "tag" "$TAG"
 
 PUBLISHED="$(npm view @b4moss/crudian version 2>/dev/null || true)"
