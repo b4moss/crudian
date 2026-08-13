@@ -114,17 +114,18 @@ PHP / Go パッケージは本マイルストーンの必須範囲外（契約�
 
 ---
 
-## 既存 GitHub Issue との対応（目安）
+## GitHub Issue 対応
 
-現状 Issue は旧マイルストーン分割に寄っている。ロードマップ更新後の対応目安:
+| Milestone | Issue |
+|-----------|--------|
+| **v0.1.0** | #16 `createCrud` / 共有契約 / `transaction` |
+| | #6 基本 CRUD（create / read / update / delete） |
+| | #9 `search` / `list`（条件ビルダー・cursor） |
+| | #17 `tsc` dist / `exports` / Node 誤 import ガード |
+| **v0.2.0** | #7 `upsert` / `duplicate` |
+| | #8 `bulk*` |
+| | #18 Bun テンプレ試し食い（推奨） |
+| **v0.3.0** | #12 / #13 drizzle |
+| | #14 / #15 prisma |
 
-| Issue | 旧 | 新 |
-|-------|----|----|
-| #6 基本 CRUD | v0.1.0 | v0.1.0（テスト含む） |
-| #9 search | v0.1.0 | v0.1.0（テスト含む） |
-| #7 upsert / duplicate | v0.1.0 | **v0.2.0** |
-| #8 bulk* | v0.1.0 | **v0.2.0** |
-| #10 / #11 テスト整備 | v0.2.0 | v0.1〜v0.2 に分散（機能単位）。残タスクは横断カバレッジ整理用に再定義可 |
-| #12〜#15 drizzle / prisma | v0.3.0 | v0.3.0（変更なし） |
-
-Issue / Milestone の付け替えは、本ドキュメント合意後に別作業で行う。
+クローズ済み（方針変更により機能 Issue へ内包）: #10 / #11
