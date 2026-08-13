@@ -10,15 +10,17 @@ DDD の Repository 層向け CRUD 抽象ライブラリ。
 
 ## API
 
+入口: `createCrud(db)`（呼び出し側の `Database` を注入）
+
 - `create`（対象行を返す）
 - `read`（未ヒットは `null`）
-- `search`（正式。カラム・条件・比較演算子・ネスト可能な and/or・複合検索。戻り値は `{ items, nextCursor, hasMore }`）
+- `search`（正式。戻り値は `{ items, nextCursor, hasMore }`。`nextCursor` は生の `id`）
 - `list`（`search` の別名）
-- `update`（対象行を返す）
+- `update`（対象行を返す。0件なら `null`）
 - `delete`（影響件数を返す）
 - `upsert`（conflict は主キー `id`。対象行を返す）
-- `bulkCreate` / `bulkUpdate` / `bulkDelete` / `bulkUpsert`
-- `duplicate`（対象行を返す）
+- `bulkCreate` / `bulkUpdate` / `bulkDelete` / `bulkUpsert`（いずれも件数のみ返す）
+- `duplicate`（対象行を返す。0件なら `null`）
 - `transaction`（ヘルパ。ライブラリは自動ではトランザクションを張らない）
 
 ### 条件・演算子
@@ -29,7 +31,7 @@ DDD の Repository 層向け CRUD 抽象ライブラリ。
 ## 備考
 
 - `limit` と cursor 方式の pagination を提供する（offset は使わない）
-- cursor は当面 `id` 昇順固定
+- cursor は当面 `id` 昇順固定。`nextCursor` は生の `id`
 - 全文検索には対応しない
 - 行データはジェネリクスで型付けする
 - 契約語彙は PHP / Go にも写せる形を先に寄せる
@@ -70,6 +72,15 @@ DDD の Repository 層向け CRUD 抽象ライブラリ。
 | 9 | ビルド | `tsc` で `dist` を生成 |
 | 10 | Node からの誤 import | 解決は可能だが、読み込み時に「誤って import していませんか？」と明示エラー |
 
+### 第3弾
+
+| # | 項目 | 決定 |
+|---|------|------|
+| 1 | `update` / `duplicate` の0件 | `null` を返す |
+| 2 | `nextCursor` | 生の `id` |
+| 3 | `bulk*` 戻り値 | すべて件数のみ |
+| 4 | ファクトリ名 | `createCrud(db)` |
+
 設計・進め方の詳細: [`docs/plans/bun-sqlite-adapter.md`](./plans/bun-sqlite-adapter.md)
 
 ## パッケージ構成
@@ -90,7 +101,9 @@ Node から `@b4moss/crudian/bun-sqlite` を読んだ場合は、読み込み時
 | `@b4moss/crudian/prisma` | Prisma |
 
 ```ts
-import { /* ... */ } from "@b4moss/crudian/bun-sqlite"
+import { createCrud } from "@b4moss/crudian/bun-sqlite"
+
+const crud = createCrud(db)
 ```
 
 ### 他言語

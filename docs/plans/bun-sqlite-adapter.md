@@ -31,20 +31,22 @@ bun-sqlite を参照実装とし、他アダプタはそれとの互換で測る
 iron-rule に準拠し、単表 + カラム map + 条件、という粒度を維持する。
 
 ```ts
-create(table, cols)                 // 対象行を返す
-read<T>(table, query)               // 1件 or null
-search<T>(table, query)             // 正式。{ items, nextCursor, hasMore }
-list<T>(table, query)               // search の別名
-update / upsert / duplicate         // 対象行を返す
-delete                              // 影響件数
-bulkCreate / bulkUpdate / bulkDelete / bulkUpsert
-transaction(fn)                     // ヘルパ（自動 TX は張らない）
+const crud = createCrud(db)
+
+crud.create(table, cols)            // 対象行を返す
+crud.read<T>(table, query)          // 1件 or null
+crud.search<T>(table, query)        // 正式。{ items, nextCursor, hasMore } / nextCursor は生 id
+crud.list<T>(table, query)          // search の別名
+crud.update / upsert / duplicate    // 対象行。0件なら null
+crud.delete                         // 影響件数
+crud.bulkCreate / bulkUpdate / bulkDelete / bulkUpsert  // 件数のみ
+crud.transaction(fn)                // ヘルパ（自動 TX は張らない）
 ```
 
 - 行データはジェネリクスで型付けする（例: `read<T>(...)`）
 - 条件はビルダー API を主とし、and/or 木は内部表現
 - 演算子: `eq/ne/lt/gt/lte/gte/in/like/isNull/isNotNull`
-- 呼び出し側が作った `Database` を注入する（パスや `:memory:` の内部生成はしない）
+- 入口は `createCrud(db)`。呼び出し側が作った `Database` を注入する
 - JOIN 等の非 CRUD 用に、生の `Database`（`bun:sqlite`）を最初から公開する
 - 識別子は文字列必須のみ（形式検証なし）。不正時は SQLite エラー
 - 独自エラーは最小限。他は SQLite 例外を伝播
@@ -91,21 +93,29 @@ transaction(fn)                     // ヘルパ（自動 TX は張らない）
 | 9 | ビルド | `tsc` で `dist` を生成 |
 | 10 | Node からの誤 import | 読み込み時に「誤って import していませんか？」と明示エラー |
 
+#### 第3弾
+
+| # | 項目 | 決定 |
+|---|------|------|
+| 1 | `update` / `duplicate` の0件 | `null` を返す |
+| 2 | `nextCursor` | 生の `id` |
+| 3 | `bulk*` 戻り値 | すべて件数のみ |
+| 4 | ファクトリ名 | `createCrud(db)` |
+
 詳細は [`docs/main.md`](../main.md) の「契約決定事項」も参照。
 
-### まだ決めていない事項（低優先）
+### まだ決めていない事項（低優先・実装中で可）
 
 | 項目 | 論点 |
 |------|------|
 | テスト用スキーマ | テスト内 DDL か fixture か |
 | テンプレ試し食い | v0.1.0 の必須ゲートにするか |
-| bulk 系の戻り値細部 | 行配列か件数か（単発書き込みは行返しで確定） |
 
 ## 進め方
 
 ### Phase A — 契約固定
 
-1. `packages/js/src/index.ts` に型・ビルダー・演算子・`transaction` シグネチャを置く
+1. `packages/js/src/index.ts` に型・ビルダー・演算子・`createCrud` / `transaction` シグネチャを置く
 2. 決定済み事項に沿い、必要なら `docs/main.md` を微修正する
 
 ### Phase B — bun-sqlite 実装（v0.1.0 / v0.2.0）
