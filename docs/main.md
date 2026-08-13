@@ -76,8 +76,20 @@ import { /* ... */ } from "@b4moss/crudian/bun-sqlite"
 | **v0.2.0** | `bun:sqlite` の単体・結合テストと DB インメモリテストが通ること |
 | **v0.3.0** | Drizzle / Prisma で同等の実装とテストが通ること |
 
+## 配布
+
+| 言語 | 形態 | 取り込み先 |
+|------|------|------------|
+| JS/TS | npm（`@b4moss/crudian`） | Bun / Node 向けテンプレートリポジトリ |
+| PHP | Composer / Laravel package | PHP / Laravel 向けテンプレートリポジトリ |
+| Go | Go module | Go 向けテンプレートリポジトリ |
+
+思想の正典は charter の薄い DDD と iron-rule の `internal/db/crud`（および nook の `CrudTrait`）。本ライブラリはその共通 CRUD を言語横断でパッケージ化する。
+
 ## 初期スコープ
 
 まず `@b4moss/crudian/bun-sqlite` を実装し（v0.1.0）、テスト整備（v0.2.0）のあと他アダプタへ展開する（v0.3.0）。
+
+設計と進め方: [`docs/plans/bun-sqlite-adapter.md`](./plans/bun-sqlite-adapter.md)
 
 このドキュメントを仕様の正とする。
