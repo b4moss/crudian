@@ -24,4 +24,5 @@ export type {
   SearchQuery,
   DeleteQuery,
   UpdateQuery,
+  DuplicateQuery,
 } from "./types.js"
