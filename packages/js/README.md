@@ -175,6 +175,15 @@ const deleted = crud.delete("items", { where: where().eq("id", row.id) })
 
 Canonical list API. Cursor pagination on `id` ascending. `total` is the full where-match count (ignores `limit` / `cursor`).
 
+`SearchQuery` fields:
+
+| Field | Meaning |
+|-------|---------|
+| `columns?` | Column list for `SELECT` (same idea as `read`). Omit → `*` |
+| `where?` | Condition builder / node |
+| `limit?` | Page size (default `20`) |
+| `cursor?` | Raw `id` cursor (keyset); rows with `id > cursor` |
+
 ```ts
 for (let i = 0; i < 5; i++) {
   crud.create("items", { name: `n${i}`, score: i })
@@ -195,18 +204,26 @@ const page2 = crud.search<Item>("items", {
 // items ids [3, 4], total still 5
 
 const filtered = crud.search<Item>("items", {
+  columns: ["id", "name"],
   where: where().gte("score", 3),
   limit: 10,
 })
+// each item is { id, name } only
 ```
 
 ### `list(table, query?)` → same as `search`
 
-Thin alias of `search`.
+Thin alias of `search` (same `SearchQuery`, including `columns`).
 
 ```ts
-const a = crud.list<Item>("items", { limit: 10 })
-const b = crud.search<Item>("items", { limit: 10 })
+const a = crud.list<Item>("items", {
+  columns: ["id", "name"],
+  limit: 10,
+})
+const b = crud.search<Item>("items", {
+  columns: ["id", "name"],
+  limit: 10,
+})
 // a and b are deep-equal
 ```
 
@@ -363,6 +380,7 @@ Nestable `and` / `or`. Empty `in([])` is rejected.
 | `delete` / bulk miss | `0` |
 | Upsert conflict | primary key `id` |
 | Pagination | cursor on `id` ASC only (no offset) |
+| `columns` | optional on `read` / `search` / `list`; omit → `*` |
 | `search.total` / `count` | full where count; not page length |
 | Errors | minimal `CrudianError`; other errors propagate from the driver |
 | Identifiers | string required; no format validation |
