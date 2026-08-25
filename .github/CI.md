@@ -3,10 +3,10 @@
 ## Goals
 
 1. **Lint + unit/integration** must clear on GitHub at least once before merge.
-2. **Same package content that already passed** is skipped on later runs (GHA cache pass-marker), including after merges that only reintroduce already-tested trees.
+2. **Same package identity that already passed on an ancestor (or integration tip)** is skipped — merge stacks must not re-run the same work.
 3. **No product E2E in CI** (none exist today; keep it that way).
-4. **Only changed language packages** run in CI; **only version-bumped packages** deploy in CD.
-5. Prefer **short wall-clock time**: path filters, job parallelism, Bun/Go/Docker caches, pass-markers.
+4. **Only changed language packages** are scheduled in CI; **only version-bumped packages** deploy in CD.
+5. Prefer **short wall-clock time**: path filters, job parallelism, Bun/Go caches, ancestor skip.
 
 ## Workflows
 
@@ -19,12 +19,16 @@
 
 ## CI details (`ci.yml`)
 
-- **Change detection:** `dorny/paths-filter` on `packages/js/**` and `packages/go/**`. Edits to `ci.yml` / this file re-run all package jobs.
+- **Change detection:** `dorny/paths-filter` on `packages/js/**` and `packages/go/**`. Edits to `ci.yml`, the ancestor-skip script, or this file **schedule** all package jobs (so CI logic changes are not silently ignored).
 - **Docs-only / other-only PRs:** package jobs are skipped; gate job `CI result` still succeeds.
 - **Lint:** JS = `tsc --noEmit`; Go = `gofmt -l` + `go vet`.
 - **Tests:** JS bun-sqlite (+ build), JS drizzle/prisma/libsql, Go `go test ./...`.
-- **Pass-marker:** per-job content `hashFiles(...)` cache. Hit → skip work. Push to integration branches seeds markers for later PRs.
-- **Gate:** `CI result` fails if any required job is `failure` / `cancelled`; `skipped` is OK.
+- **Ancestor skip (not GHA cache):** each job runs `.github/scripts/ci-skip-if-ancestor-passed.sh` with:
+  - exact check-run name (e.g. `test packages/go (gorm / libsql)`)
+  - identity paths: package dir + `ci.yml` + the skip script  
+  If a recent ancestor / `origin/develop` / `origin/main` tip has the **same git OIDs** for those paths **and** a **successful** check-run with that name, the job short-circuits.  
+  Why not `actions/cache` pass-markers? Cache entries are **branch-scoped**; feature → `dev-v*` → `develop` → `main` could not see each other’s markers, so stacks re-tested every time (confirmed in Actions logs: `Skip notice` never ran).
+- **Gate:** `CI result` fails if any required job is `failure` / `cancelled`; `skipped` (path filter) is OK. Ancestor short-circuit still reports the job as **success**.
 
 Required status check for branch protection should be **`CI result`** (not individual package jobs).
 
