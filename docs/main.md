@@ -149,20 +149,20 @@ const crud = createCrud(db)
 
 ## バージョン方針
 
-- アダプタごとにはバージョンを上げない
-- **モノリポ内で共通のバージョン**を上げる（JS なら `@b4moss/crudian` 単一パッケージの版数）
-- あるアダプタに変更がなくても、リポジトリ／パッケージ全体のリリースに合わせて版が上がることがある
-- そのため、個別アダプタから見ると **版番号が飛ぶ**ことがある（正常）
-
-マイルストーン名（v0.1.0 等）は計画単位であり、npm / Composer / Go module の公開版と必ずしも 1:1 ではない場合がある。公開版はモノリポ共通の SemVer に従う。
+- **言語（配布物）ごとに独立した SemVer** を持つ
+  - JS/TS: `packages/js/package.json` → npm `@b4moss/crudian`（例: `0.6.0`）。git タグ `vX.Y.Z`
+  - Go: `packages/go/VERSION` → module `github.com/b4moss/crudian/go`（例: 初版 `0.7.0`）。git タグ `packages/go/vX.Y.Z`
+- **同一言語パッケージ内**ではアダプタ別バージョンは切らない（JS の bun-sqlite / drizzle / prisma / libsql は単一 npm 版に同梱）
+- 言語間で版が揃わない・飛ぶことは **許容**（例: npm が `0.6.0` のまま Go だけ `0.7.0` を初公開）
+- マイルストーン名（リポジトリ計画の v0.7.0 等）は作業単位であり、各言語の公開 SemVer と 1:1 である必要はない
 
 ## 配布
 
-| 言語 | 形態 | 取り込み先 |
-|------|------|------------|
-| JS/TS | npm（`@b4moss/crudian`） | Bun / Node 向けテンプレートリポジトリ |
-| PHP | Composer / Laravel package | PHP / Laravel 向けテンプレートリポジトリ |
-| Go | Go module | Go 向けテンプレートリポジトリ |
+| 言語 | 形態 | 備考 |
+|------|------|------|
+| JS/TS | npm（`@b4moss/crudian`） | レジストリへ publish。CD: `release` + タグ `v*` |
+| PHP | Composer / Laravel package（未実装） | |
+| Go | Go module（module path = 正） | npm 相当の独自レジストリは使わない。消費は `go get` + git タグ。CD は Release 作成と proxy への ping のみ（[`.github/CI.md`](../.github/CI.md)） |
 
 思想の正典は charter の薄い DDD と iron-rule の `internal/db/crud`（および nook の `CrudTrait`）。本ライブラリはその共通 CRUD を言語横断でパッケージ化する。
 

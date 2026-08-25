@@ -116,8 +116,9 @@ type Executor interface {
 ### libSQL 橋渡し
 
 - 公式 `github.com/tursodatabase/libsql-client-go` の `database/sql` ドライバを第一候補
-- `*sql.DB` を注入。テストはクラウド資格情報なしの一時 `file:`（`:memory:` は TX で避けうる）
-- deprecated 等で不通なら `go-libsql` へフォールバックし README / Issue に理由を残す
+- `*sql.DB` を注入。テストはクラウド資格情報なしの一時 `file://`（絶対パス。`:memory:` は TX で避ける）
+- local `file://` 時、当該ドライバは登録済みの `sqlite` / `sqlite3` へ委譲する（テストでは `modernc.org/sqlite` を blank import）
+- upstream は deprecated 表記あり。不通なら `go-libsql`（CGO）へフォールバックし README / Issue に理由を残す
 
 ## テスト方針
 
@@ -130,10 +131,14 @@ type Executor interface {
 
 詳細: [`docs/tests/v0.7.0.md`](../tests/v0.7.0.md)
 
-## CI / 梱包
+## CI / 梱包 / 版
 
-- `.github/workflows/ci.yml` に `packages/go` の `go test ./...`（Go 1.26）
-- ルート README / `packages/go` README（英語で install + ctx API 例）
+- CI: [`.github/CI.md`](../../.github/CI.md) — `packages/go` 変更時のみ lint（`gofmt` / `vet`）+ `go test ./...`（Go 1.26）
+- 公開版: `packages/go/VERSION`（初版 **0.7.0**）。npm の版とは独立
+- git タグ: **`packages/go/vX.Y.Z`**（ネスト module の慣習）。ルート `vX.Y.Z` は JS npm 用
+- 配布の正は **module path**（`github.com/b4moss/crudian/go`）。独自パッケージレジストリへの upload はしない。`go get` が git タグを解決する（proxy.golang.org はキャッシュ）
+- CD: `.github/workflows/publish-go.yml` — タグ存在時に GitHub Release + proxy ping
+- README: ルート / `packages/go`（英語）
 
 ## 意図的な非対応（v0.7.0）
 
@@ -142,6 +147,7 @@ type Executor interface {
 - ORM 風モデル、マイグレーション、全文検索、offset ページング
 - PHP
 - goroutine / channel による擬似 async API
+- npm 同時版上げ（JS に変更がなければ `0.6.0` のままでよい）
 
 ## 決定事項（2026-08-25 / #48）
 
@@ -150,7 +156,9 @@ type Executor interface {
 | 1 | Module path | `github.com/b4moss/crudian/go` + パッケージ `gorm` / `libsql` / `crudian` |
 | 2 | API 形 | 同期 + `context.Context`（全メソッド） |
 | 3 | Dialect | 初手からインタフェース。Sqlite 実装 + 他 stub |
-| 4 | libSQL | 公式 `libsql-client-go` 第一候補 |
+| 4 | libSQL | 公式 `libsql-client-go` 第一候補（local `file://` は companion sqlite 要） |
 | 5 | 実装順 | GORM/SQLite → libSQL |
-| 6 | マイルストーン | v0.7.0 |
+| 6 | マイルストーン | v0.7.0（Go 公開 SemVer 初版も 0.7.0） |
 | 7 | PK / cursor | 当面 `id` 固定 |
+| 8 | 言語間バージョン | 独立可（npm 据え置きで Go のみリリース可） |
+| 9 | 配布 | module path + `packages/go/v*` タグ。レジストリ upload なし |
