@@ -1,0 +1,77 @@
+name: Publish Go
+
+# Makes github.com/b4moss/crudian/go discoverable when packages/go version is tagged.
+# Tag form: packages/go/vX.Y.Z (must match packages/go/VERSION).
+# See .github/CI.md
+
+on:
+  push:
+    branches:
+      - release
+    tags:
+      - "packages/go/v*"
+
+concurrency:
+  group: publish-go-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: publish github.com/b4moss/crudian/go
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: packages/go
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Decide whether to publish
+        id: decide
+        working-directory: ${{ github.workspace }}
+        run: bash .github/scripts/should-publish-go.sh
+
+      - name: Setup Go
+        if: steps.decide.outputs.skip != 'true'
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+          cache-dependency-path: packages/go/go.sum
+
+      - name: Vet
+        if: steps.decide.outputs.skip != 'true'
+        run: go vet ./...
+
+      - name: Test
+        if: steps.decide.outputs.skip != 'true'
+        run: go test ./...
+
+      - name: Create GitHub Release
+        if: steps.decide.outputs.skip != 'true'
+        working-directory: ${{ github.workspace }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.decide.outputs.tag }}
+          VERSION: ${{ steps.decide.outputs.version }}
+        run: |
+          set -euo pipefail
+          gh release create "$TAG" \
+            --title "Go module v${VERSION}" \
+            --notes "Go module \`github.com/b4moss/crudian/go\` v${VERSION} (GORM SQLite + libSQL adapters)." \
+            --verify-tag
+
+      - name: Ping Go module proxy
+        if: steps.decide.outputs.skip != 'true'
+        env:
+          VERSION: ${{ steps.decide.outputs.version }}
+        run: |
+          set -euo pipefail
+          # Ask the public proxy to fetch this version (best-effort indexing).
+          curl -fsSL "https://proxy.golang.org/github.com/b4moss/crudian/go/@v/v${VERSION}.info" || \
+            echo "proxy ping returned non-zero (tag may need a moment); release was created."

@@ -44,6 +44,7 @@ See [`packages/go/README.md`](./packages/go/README.md).
 - libSQL design: [`docs/plans/libsql-adapter.md`](./docs/plans/libsql-adapter.md)
 - Go design: [`docs/plans/go-module.md`](./docs/plans/go-module.md)
 - Tests: [`docs/tests/`](./docs/tests/)
+- CI/CD policy: [`.github/CI.md`](./.github/CI.md)
 
 ## License
 

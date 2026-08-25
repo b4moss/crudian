@@ -81,3 +81,9 @@ row, err := crud.Create(context.Background(), "items", crudian.Row{"name": "alph
 - Upsert / cursor pagination assume primary key column `id`.
 - Connections are caller-owned; `CreateCrud` does not open DBs.
 - Postgres/MySQL dialects are stubs (out of scope for v0.7.0).
+
+## Versioning / publish
+
+- Version file: [`VERSION`](./VERSION)
+- Git tag for this nested module: `packages/go/vX.Y.Z` (must match `VERSION`)
+- CD: `.github/workflows/publish-go.yml` on `release` / that tag (see [`.github/CI.md`](../../.github/CI.md))
