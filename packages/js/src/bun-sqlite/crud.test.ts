@@ -38,7 +38,7 @@ describe("createCrud", () => {
     expect(crud.db).toBe(db)
   })
 
-  test("正常系: CRUD / search / list / transaction を持つ", () => {
+  test("正常系: CRUD / search / list / count / transaction を持つ", () => {
     const crud = crudFixture()
     expect(typeof crud.create).toBe("function")
     expect(typeof crud.read).toBe("function")
@@ -46,6 +46,7 @@ describe("createCrud", () => {
     expect(typeof crud.delete).toBe("function")
     expect(typeof crud.search).toBe("function")
     expect(typeof crud.list).toBe("function")
+    expect(typeof crud.count).toBe("function")
     expect(typeof crud.transaction).toBe("function")
   })
 
@@ -260,6 +261,41 @@ describe("delete", () => {
   })
 })
 
+describe("count", () => {
+  test("正常系: 空表は 0 / 全件 / where で件数", () => {
+    const crud = crudFixture()
+    expect(crud.count("items")).toBe(0)
+
+    crud.create("items", { name: "alice", score: 10, note: null })
+    crud.create("items", { name: "bob", score: 20, note: "x" })
+    crud.create("items", { name: "carol", score: 30, note: "y" })
+    expect(crud.count("items")).toBe(3)
+    expect(crud.count("items", { where: where().eq("name", "alice") })).toBe(1)
+    expect(crud.count("items", { where: where().gte("score", 20) })).toBe(2)
+    expect(crud.count("items", { where: where().eq("name", "missing") })).toBe(0)
+  })
+
+  test("正常系: where 件数は limit なし search の items 長と一致", () => {
+    const crud = crudFixture()
+    crud.create("items", { name: "alice", score: 10, note: null })
+    crud.create("items", { name: "bob", score: 20, note: "x" })
+    crud.create("items", { name: "alice", score: 15, note: "z" })
+    const w = where().eq("name", "alice")
+    expect(crud.count("items", { where: w })).toBe(
+      crud.search("items", { where: w, limit: 100 }).items.length,
+    )
+  })
+
+  test("異常系: テーブル名不正 / in 空 / 存在しない表", () => {
+    const crud = crudFixture()
+    expect(() => crud.count(123 as never)).toThrow(CrudianError)
+    expect(() => crud.count("items", { where: where().in("name", []) })).toThrow(
+      CrudianError,
+    )
+    expect(() => crud.count("no_such_table")).toThrow()
+  })
+})
+
 describe("search / list", () => {
   test("正常系: id 昇順", () => {
     const crud = crudFixture()
@@ -269,12 +305,13 @@ describe("search / list", () => {
     expect(items.map((i) => i.id)).toEqual([1, 2])
   })
 
-  test("正常系: limit 未満は hasMore=false / nextCursor=null", () => {
+  test("正常系: limit 未満は hasMore=false / nextCursor=null / total", () => {
     const crud = crudFixture()
     crud.create("items", { name: "a", score: 1 })
     const result = crud.search("items", { limit: 10 })
     expect(result.hasMore).toBe(false)
     expect(result.nextCursor).toBeNull()
+    expect(result.total).toBe(1)
   })
 
   test("正常系: ページングで続きが取れる", () => {
@@ -286,15 +323,48 @@ describe("search / list", () => {
     expect(page1.items).toHaveLength(2)
     expect(page1.hasMore).toBe(true)
     expect(page1.nextCursor).toBe(2)
+    expect(page1.total).toBe(5)
 
     const page2 = crud.search("items", { limit: 2, cursor: page1.nextCursor })
     expect(page2.items.map((i) => i.id)).toEqual([3, 4])
     expect(page2.hasMore).toBe(true)
+    expect(page2.total).toBe(5)
 
     const page3 = crud.search("items", { limit: 2, cursor: page2.nextCursor })
     expect(page3.items.map((i) => i.id)).toEqual([5])
     expect(page3.hasMore).toBe(false)
     expect(page3.nextCursor).toBeNull()
+    expect(page3.total).toBe(5)
+  })
+
+  test("正常系: where + ページングでも total は全一致件数", () => {
+    const crud = crudFixture()
+    for (let i = 0; i < 4; i++) {
+      crud.create("items", { name: "keep", score: i })
+    }
+    crud.create("items", { name: "skip", score: 99 })
+    const page1 = crud.search("items", {
+      limit: 2,
+      where: where().eq("name", "keep"),
+    })
+    expect(page1.items).toHaveLength(2)
+    expect(page1.total).toBe(4)
+    const page2 = crud.search("items", {
+      limit: 2,
+      where: where().eq("name", "keep"),
+      cursor: page1.nextCursor,
+    })
+    expect(page2.items).toHaveLength(2)
+    expect(page2.total).toBe(4)
+  })
+
+  test("正常系: 0件は total=0", () => {
+    const crud = crudFixture()
+    const result = crud.search("items", { where: where().eq("name", "none") })
+    expect(result.items).toEqual([])
+    expect(result.hasMore).toBe(false)
+    expect(result.nextCursor).toBeNull()
+    expect(result.total).toBe(0)
   })
 
   test("正常系: list は search と同結果", () => {
