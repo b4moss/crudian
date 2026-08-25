@@ -19,6 +19,7 @@
 | **v0.2.0** | Extended writes | `upsert` / `duplicate` / `bulk*` が同水準で揃い、Bun テンプレに載せられる |
 | **v0.3.0** | Other JS adapters | drizzle / prisma が bun-sqlite と同等 API・テストで通る |
 | **v0.5.0** | count / SearchResult.total | `count()` と `search`/`list` の `total` が bun-sqlite / drizzle / prisma で揃う（#47）。Turso（#42）は別スコープ |
+| **v0.4.0** | Docker / E2E harness | 全ランタイム 1 コンテナ + Postgres / MySQL / MariaDB 上の E2E 基盤（[#44](https://github.com/b4moss/crudian/issues/44)） |
 
 ---
 
@@ -147,5 +148,6 @@ Turso SDK（#42）は同マイルストーンの別 Issue スコープ。
 | | #14 / #15 prisma |
 | **v0.5.0** | #47 `count` / `SearchResult.total` |
 | | #42 Turso SDK（本ロードマップ上は別スコープ） |
+| **v0.4.0** | #44 Docker / Dev Containers（全ランタイム 1 コンテナ + 実 DB E2E） |
 
 クローズ済み（方針変更により機能 Issue へ内包）: #10 / #11
