@@ -61,3 +61,4 @@ VS Code / Cursor の Dev Containers は `.devcontainer/devcontainer.json` が
 - ランタイム別コンテナは作らない（#44: 全部入りを 1 つ）
 - E2E 用 DB は compose の実インスタンス。アダプタ実装が進んだらここから叩く
 - CI の通常ジョブ（モック / `:memory:`）とは分離。イメージのスモークは `docker-image` workflow
+- リポジトリ全体の CI/CD 方針は [`.github/CI.md`](../.github/CI.md)

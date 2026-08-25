@@ -102,4 +102,4 @@ prisma アダプタと同様に、`createAsyncSqliteCrud(client, ex)` へ渡す�
 | 4 | 共有層 | `createAsyncSqliteCrud` を再利用 |
 | テスト DB | 一時ファイル（`file:...`）。`:memory:` は接続／interactive TX で別 DB になりやすい |
 | 6 | マイルストーン | v0.6.0（#42）。v0.5.0 の count とは別スコープ |
-| 7 | 版上げ | モノリポ共通 `@b4moss/crudian` を `0.6.0` へ |
+| 7 | 版上げ | JS パッケージ `@b4moss/crudian` を `0.6.0` へ（Go 等の他言語版とは独立） |
