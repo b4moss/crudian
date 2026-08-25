@@ -18,6 +18,7 @@
 | **v0.1.0** | Core CRUD Trait | 基本 CRUD + `search`/`list` + 条件ビルダー + `transaction` + 梱包骨格が、インメモリテスト付きで使える |
 | **v0.2.0** | Extended writes | `upsert` / `duplicate` / `bulk*` が同水準で揃い、Bun テンプレに載せられる |
 | **v0.3.0** | Other JS adapters | drizzle / prisma が bun-sqlite と同等 API・テストで通る |
+| **v0.5.0** | count / SearchResult.total | `count()` と `search`/`list` の `total` が bun-sqlite / drizzle / prisma で揃う（#47）。Turso（#42）は別スコープ |
 
 ---
 
@@ -33,7 +34,7 @@
 | `read` | 1件。未ヒットは `null` | |
 | `update` | 更新し対象行を返す。0件は `null` | |
 | `delete` | 影響件数を返す | |
-| `search` | 正式 API。`{ items, nextCursor, hasMore }` | `nextCursor` は生 `id`。cursor は `id` 昇順 |
+| `search` | 正式 API。`{ items, nextCursor, hasMore }`（v0.5.0 で `total` 追加） | `nextCursor` は生 `id`。cursor は `id` 昇順 |
 | `list` | `search` の別名 | |
 | 条件ビルダー | `eq/ne/lt/gt/lte/gte/in/like/isNull/isNotNull` + ネスト可能な and/or | 木は内部表現 |
 | `transaction` | ヘルパのみ（自動 TX は張らない） | |
@@ -128,5 +129,7 @@ PHP / Go パッケージは本マイルストーンの必須範囲外（契約�
 | | #18 Bun テンプレ試し食い（推奨） |
 | **v0.3.0** | #12 / #13 drizzle |
 | | #14 / #15 prisma |
+| **v0.5.0** | #47 `count` / `SearchResult.total` |
+| | #42 Turso SDK（本ロードマップ上は別スコープ） |
 
 クローズ済み（方針変更により機能 Issue へ内包）: #10 / #11

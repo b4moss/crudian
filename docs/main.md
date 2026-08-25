@@ -14,8 +14,9 @@ DDD の Repository 層向け CRUD 抽象ライブラリ。
 
 - `create`（対象行を返す）
 - `read`（未ヒットは `null`）
-- `search`（正式。戻り値は `{ items, nextCursor, hasMore }`。`nextCursor` は生の `id`）
+- `search`（正式。戻り値は `{ items, nextCursor, hasMore, total }`。`nextCursor` は生の `id`。`total` は where 全件数）
 - `list`（`search` の別名）
+- `count`（where 全件数を `number` で返す。`CountQuery` は `{ where? }` のみ）
 - `update`（対象行を返す。0件なら `null`）
 - `delete`（影響件数を返す）
 - `upsert`（conflict は主キー `id`。対象行を返す）
@@ -32,6 +33,7 @@ DDD の Repository 層向け CRUD 抽象ライブラリ。
 
 - `limit` と cursor 方式の pagination を提供する（offset は使わない）
 - cursor は当面 `id` 昇順固定。`nextCursor` は生の `id`
+- `search` / `list` の `total` と `count()` は where 全件数（limit / cursor 非依存）。`count` は `search` と同じ where コンパイルを流用する
 - 全文検索には対応しない
 - 行データはジェネリクスで型付けする
 - 契約語彙は PHP / Go にも写せる形を先に寄せる
@@ -64,7 +66,7 @@ DDD の Repository 層向け CRUD 抽象ライブラリ。
 | 1 | 正式 API 名 | `search` を正式、`list` は別名 |
 | 2 | 条件 API | ビルダーを主とし、木構造は内部表現 |
 | 3 | 演算子 | `eq/ne/lt/gt/lte/gte/in/like` + `isNull` / `isNotNull` |
-| 4 | cursor レスポンス | `{ items, nextCursor, hasMore }` |
+| 4 | cursor レスポンス | `{ items, nextCursor, hasMore }`（v0.5.0 で `total` を追加） |
 | 5 | 書き込み戻り値 | `create`/`update`/`upsert`/`duplicate` は対象行、`delete` は影響件数 |
 | 6 | エラー | 独自は最小限。他は SQLite 例外を伝播 |
 | 7 | 識別子 | 形式検証なし（文字列必須のみ） |
@@ -136,6 +138,7 @@ const crud = createCrud(db)
 | **v0.1.0** | Core CRUD Trait（`createCrud` / 基本 CRUD / `search`・`list` / 条件ビルダー / `transaction` / 梱包骨格 + テスト） |
 | **v0.2.0** | Extended writes（`upsert` / `duplicate` / `bulk*` + テスト。Bun テンプレ試し食いは推奨） |
 | **v0.3.0** | Drizzle / Prisma で同等の実装とテストが通ること |
+| **v0.5.0** | `count()` と `SearchResult.total`（#47）。Turso SDK（#42）は同マイルストーンの別スコープ |
 
 ## バージョン方針
 
