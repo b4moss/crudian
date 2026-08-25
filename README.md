@@ -4,13 +4,22 @@ CRUD abstraction for DDD repositories (language-agnostic packaging).
 
 ## JavaScript / TypeScript
 
-npm package: **[@b4moss/crudian](./packages/js)**
+npm package: **[@b4moss/crudian](./packages/js)** (`packages/js`)
 
 ```bash
 npm install @b4moss/crudian
 ```
 
-See [`packages/js/README.md`](./packages/js/README.md) for adapters (`bun-sqlite` / `drizzle` / `prisma` / `libsql`) and API notes.
+Adapters (subpaths):
+
+| Subpath | Backend |
+|---------|---------|
+| `@b4moss/crudian/bun-sqlite` | Bun `bun:sqlite` (sync) |
+| `@b4moss/crudian/drizzle` | Drizzle + better-sqlite3 (sync) |
+| `@b4moss/crudian/prisma` | Prisma (async) |
+| `@b4moss/crudian/libsql` | `@libsql/client` (async) |
+
+Full usage — **every method with sample code** — lives in [`packages/js/README.md`](./packages/js/README.md).
 
 ## Docs
 
