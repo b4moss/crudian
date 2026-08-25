@@ -13,10 +13,10 @@ DDD の Repository 層向け CRUD 抽象ライブラリ。
 入口: `createCrud(db)`（呼び出し側の `Database` を注入）
 
 - `create`（対象行を返す）
-- `read`（未ヒットは `null`）
-- `search`（正式。戻り値は `{ items, nextCursor, hasMore, total }`。`nextCursor` は生の `id`。`total` は where 全件数）
-- `list`（`search` の別名）
-- `count`（where 全件数を `number` で返す。`CountQuery` は `{ where? }` のみ）
+- `read`（未ヒットは `null`。`columns?` で投影可）
+- `search`（正式。戻り値は `{ items, nextCursor, hasMore, total }`。`nextCursor` は生の `id`。`total` は where 全件数。`columns?` / `where?` / `limit?` / `cursor?`）
+- `list`（`search` の別名。同じ `SearchQuery`＝`columns` 含む）
+- `count`（where 全件数を `number` で返す。`CountQuery` は `{ where? }` のみ。`columns` は受け取らない）
 - `update`（対象行を返す。0件なら `null`）
 - `delete`（影響件数を返す）
 - `upsert`（conflict は主キー `id`。対象行を返す）
