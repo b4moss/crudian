@@ -38,7 +38,8 @@ Required status check for branch protection should be **`CI result`** (not indiv
 
 - Script: `.github/scripts/should-publish-crudian.sh`
 - Needs git tag `vX.Y.Z` matching `packages/js/package.json` `version`, on HEAD or an ancestor.
-- Skips when packed content matches already-published npm (version-normalized).
+- **If `@b4moss/crudian@X.Y.Z` already exists on npm → skip** (never republish; Go-only releases must not attempt `0.6.0` again when only README/docs drifted).
+- Otherwise skips when packed content matches already-published npm latest (version-normalized).
 - Pre-publish tests: bun-sqlite, drizzle, prisma, **libsql**.
 
 ### Go (`publish-go.yml`)
