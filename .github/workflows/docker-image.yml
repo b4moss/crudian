@@ -1,11 +1,14 @@
 name: Docker image
 
+# Run on PRs into develop / dev-*.
+# Same docker-related content that already passed is skipped via GHA cache marker.
+# Image layers are cached with buildx GHA cache when a build does run.
+
 on:
   pull_request:
     branches:
       - develop
-      - main
-      - "dev-v*"
+      - "dev-*"
     paths:
       - "docker/**"
       - ".devcontainer/**"
@@ -17,18 +20,55 @@ concurrency:
 
 permissions:
   contents: read
+  actions: write
 
 jobs:
   build-and-check:
     name: build all-in-one runtime
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      IMAGE_TAG: crudian-dev:local
+      PASS_MARKER: .ci/docker-check-passed
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Restore pass marker
+        id: pass-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PASS_MARKER }}
+          key: docker-check-passed-${{ hashFiles('docker/**', '.devcontainer/**', '.github/workflows/docker-image.yml') }}
+
+      - name: Skip notice
+        if: steps.pass-cache.outputs.cache-hit == 'true'
+        run: echo "Docker check already passed for this content hash; skipping build."
+
+      - name: Set up Docker Buildx
+        if: steps.pass-cache.outputs.cache-hit != 'true'
+        uses: docker/setup-buildx-action@v3
+
       - name: Build image
-        run: docker compose -f docker/compose.yaml build dev
+        if: steps.pass-cache.outputs.cache-hit != 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: docker
+          file: docker/Dockerfile
+          load: true
+          tags: ${{ env.IMAGE_TAG }}
+          build-args: |
+            NODE_MAJOR=24
+            GO_VERSION=1.26.7
+          cache-from: type=gha,scope=crudian-dev
+          cache-to: type=gha,mode=max,scope=crudian-dev
 
       - name: Check runtimes (Node 24 / Bun / Go 1.26 / PHP)
+        if: steps.pass-cache.outputs.cache-hit != 'true'
         run: docker compose -f docker/compose.yaml run --rm --no-deps dev check-runtimes
+
+      - name: Mark passed
+        if: steps.pass-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p "$(dirname "$PASS_MARKER")"
+          date -u +"passed %Y-%m-%dT%H:%M:%SZ" > "$PASS_MARKER"
