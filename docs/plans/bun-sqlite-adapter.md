@@ -36,8 +36,9 @@ const crud = createCrud(db)
 
 crud.create(table, cols)            // 対象行を返す
 crud.read<T>(table, query)          // 1件 or null
-crud.search<T>(table, query)        // 正式。{ items, nextCursor, hasMore } / nextCursor は生 id
+crud.search<T>(table, query)        // 正式。{ items, nextCursor, hasMore, total } / nextCursor は生 id
 crud.list<T>(table, query)          // search の別名
+crud.count(table, query?)           // where 全件数（number）。CountQuery は { where? }
 crud.update / upsert / duplicate    // 対象行。0件なら null
 crud.delete                         // 影響件数
 crud.bulkCreate / bulkUpdate / bulkDelete / bulkUpsert  // 件数のみ
@@ -86,7 +87,7 @@ crud.transaction(fn)                // ヘルパ（自動 TX は張らない）
 | 1 | 正式 API 名 | `search` を正式、`list` は別名 |
 | 2 | 条件 API | ビルダーを主とし、木構造は内部表現 |
 | 3 | 演算子 | `eq/ne/lt/gt/lte/gte/in/like` + `isNull` / `isNotNull` |
-| 4 | cursor レスポンス | `{ items, nextCursor, hasMore }` |
+| 4 | cursor レスポンス | `{ items, nextCursor, hasMore }`（v0.5.0 で `total` を追加） |
 | 5 | 書き込み戻り値 | `create`/`update`/`upsert`/`duplicate` は対象行、`delete` は影響件数 |
 | 6 | エラー | 独自は最小限。他は SQLite 例外を伝播 |
 | 7 | 識別子 | 形式検証なし（文字列必須のみ） |

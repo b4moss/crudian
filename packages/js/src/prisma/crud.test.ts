@@ -71,6 +71,7 @@ describe("prisma.createCrud", () => {
       "bulkUpsert",
       "search",
       "list",
+      "count",
       "transaction",
     ] as const) {
       assert.equal(typeof crud[name], "function")
@@ -150,6 +151,26 @@ describe("prisma.coreCrud", () => {
   })
 })
 
+describe("prisma.count", () => {
+  test("正常系: 空表 / 全件 / where", async () => {
+    const crud = await crudFixture()
+    assert.equal(await crud.count("items"), 0)
+    await crud.create("items", { name: "a", score: 1 })
+    await crud.create("items", { name: "b", score: 2 })
+    assert.equal(await crud.count("items"), 2)
+    assert.equal(await crud.count("items", { where: where().eq("name", "a") }), 1)
+  })
+
+  test("異常系: テーブル名 / in 空", async () => {
+    const crud = await crudFixture()
+    await assert.rejects(() => crud.count(1 as never), CrudianError)
+    await assert.rejects(
+      () => crud.count("items", { where: where().in("name", []) }),
+      CrudianError,
+    )
+  })
+})
+
 describe("prisma.searchList", () => {
   test("正常系: ページングと list 別名", async () => {
     const crud = await crudFixture()
@@ -160,11 +181,13 @@ describe("prisma.searchList", () => {
     assert.equal(page1.items.length, 2)
     assert.equal(page1.hasMore, true)
     assert.equal(page1.nextCursor, 2)
+    assert.equal(page1.total, 5)
     const page2 = await crud.search("items", { limit: 2, cursor: page1.nextCursor })
     assert.deepEqual(
       page2.items.map((i) => i.id),
       [3, 4],
     )
+    assert.equal(page2.total, 5)
     const q = { limit: 10, where: where().eq("name", "n0") }
     assert.deepEqual(await crud.list("items", q), await crud.search("items", q))
   })
