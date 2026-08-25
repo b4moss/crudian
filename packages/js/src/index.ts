@@ -19,6 +19,9 @@ export {
 export type {
   Row,
   SearchResult,
+  OffsetSearchResult,
+  CursorSearchResult,
+  PagingMode,
   WhereInput,
   ReadQuery,
   SearchQuery,
