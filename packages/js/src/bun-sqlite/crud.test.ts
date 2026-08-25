@@ -297,74 +297,129 @@ describe("count", () => {
 })
 
 describe("search / list", () => {
-  test("正常系: id 昇順", () => {
+  test("正常系: id 昇順（デフォルト offset）", () => {
     const crud = crudFixture()
     crud.create("items", { name: "b", score: 2 })
     crud.create("items", { name: "a", score: 1 })
-    const { items } = crud.search("items")
-    expect(items.map((i) => i.id)).toEqual([1, 2])
+    const result = crud.search("items")
+    expect(result.items.map((i) => i.id)).toEqual([1, 2])
+    expect(result).toMatchObject({
+      offset: 0,
+      limit: 20,
+      total: 2,
+      hasMore: false,
+    })
+    expect("nextCursor" in result).toBe(false)
   })
 
-  test("正常系: limit 未満は hasMore=false / nextCursor=null / total", () => {
-    const crud = crudFixture()
-    crud.create("items", { name: "a", score: 1 })
-    const result = crud.search("items", { limit: 10 })
-    expect(result.hasMore).toBe(false)
-    expect(result.nextCursor).toBeNull()
-    expect(result.total).toBe(1)
-  })
-
-  test("正常系: ページングで続きが取れる", () => {
+  test("正常系: offset ページングで続きが取れる", () => {
     const crud = crudFixture()
     for (let i = 0; i < 5; i++) {
       crud.create("items", { name: `n${i}`, score: i })
     }
-    const page1 = crud.search("items", { limit: 2 })
-    expect(page1.items).toHaveLength(2)
-    expect(page1.hasMore).toBe(true)
-    expect(page1.nextCursor).toBe(2)
-    expect(page1.total).toBe(5)
+    const page1 = crud.search("items", { paging: "offset", limit: 2, offset: 0 })
+    expect(page1.items.map((i) => i.id)).toEqual([1, 2])
+    expect(page1).toMatchObject({
+      offset: 0,
+      limit: 2,
+      total: 5,
+      hasMore: true,
+    })
 
-    const page2 = crud.search("items", { limit: 2, cursor: page1.nextCursor })
+    const page2 = crud.search("items", { paging: "offset", limit: 2, offset: 2 })
     expect(page2.items.map((i) => i.id)).toEqual([3, 4])
-    expect(page2.hasMore).toBe(true)
-    expect(page2.total).toBe(5)
+    expect(page2).toMatchObject({
+      offset: 2,
+      limit: 2,
+      total: 5,
+      hasMore: true,
+    })
 
-    const page3 = crud.search("items", { limit: 2, cursor: page2.nextCursor })
+    const page3 = crud.search("items", { paging: "offset", limit: 2, offset: 4 })
     expect(page3.items.map((i) => i.id)).toEqual([5])
-    expect(page3.hasMore).toBe(false)
-    expect(page3.nextCursor).toBeNull()
-    expect(page3.total).toBe(5)
+    expect(page3).toMatchObject({
+      offset: 4,
+      limit: 2,
+      total: 5,
+      hasMore: false,
+    })
   })
 
-  test("正常系: where + ページングでも total は全一致件数", () => {
+  test("正常系: where + offset でも total は全一致件数", () => {
     const crud = crudFixture()
     for (let i = 0; i < 4; i++) {
       crud.create("items", { name: "keep", score: i })
     }
     crud.create("items", { name: "skip", score: 99 })
     const page1 = crud.search("items", {
+      paging: "offset",
       limit: 2,
+      offset: 0,
       where: where().eq("name", "keep"),
     })
     expect(page1.items).toHaveLength(2)
     expect(page1.total).toBe(4)
+    expect(page1.hasMore).toBe(true)
     const page2 = crud.search("items", {
+      paging: "offset",
       limit: 2,
+      offset: 2,
       where: where().eq("name", "keep"),
-      cursor: page1.nextCursor,
     })
     expect(page2.items).toHaveLength(2)
     expect(page2.total).toBe(4)
+    expect(page2.hasMore).toBe(false)
   })
 
-  test("正常系: 0件は total=0", () => {
+  test("正常系: cursor ページング（明示）", () => {
+    const crud = crudFixture()
+    for (let i = 0; i < 5; i++) {
+      crud.create("items", { name: `n${i}`, score: i })
+    }
+    const page1 = crud.search("items", { paging: "cursor", limit: 2 })
+    expect(page1.items).toHaveLength(2)
+    expect(page1.hasMore).toBe(true)
+    expect("nextCursor" in page1 && page1.nextCursor).toBe(2)
+    expect(page1.total).toBe(5)
+    expect("offset" in page1).toBe(false)
+
+    const page2 = crud.search("items", {
+      paging: "cursor",
+      limit: 2,
+      cursor: "nextCursor" in page1 ? page1.nextCursor : null,
+    })
+    expect(page2.items.map((i) => i.id)).toEqual([3, 4])
+    expect(page2.hasMore).toBe(true)
+    expect(page2.total).toBe(5)
+
+    const page3 = crud.search("items", {
+      paging: "cursor",
+      limit: 2,
+      cursor: "nextCursor" in page2 ? page2.nextCursor : null,
+    })
+    expect(page3.items.map((i) => i.id)).toEqual([5])
+    expect(page3.hasMore).toBe(false)
+    expect("nextCursor" in page3 && page3.nextCursor).toBeNull()
+    expect(page3.total).toBe(5)
+  })
+
+  test("正常系: cursor limit 未満は hasMore=false / nextCursor=null / total", () => {
+    const crud = crudFixture()
+    crud.create("items", { name: "a", score: 1 })
+    const result = crud.search("items", { paging: "cursor", limit: 10 })
+    expect(result.hasMore).toBe(false)
+    expect("nextCursor" in result && result.nextCursor).toBeNull()
+    expect(result.total).toBe(1)
+  })
+
+  test("正常系: 0件は total=0（デフォルト offset）", () => {
     const crud = crudFixture()
     const result = crud.search("items", { where: where().eq("name", "none") })
     expect(result.items).toEqual([])
     expect(result.hasMore).toBe(false)
-    expect(result.nextCursor).toBeNull()
     expect(result.total).toBe(0)
+    expect(result).toMatchObject({ offset: 0, limit: 20 })
+    expect("nextCursor" in result).toBe(false)
   })
 
   test("正常系: list は search と同結果", () => {
@@ -372,12 +427,28 @@ describe("search / list", () => {
     crud.create("items", { name: "a", score: 1 })
     const q = { limit: 10, where: where().eq("name", "a") }
     expect(crud.list("items", q)).toEqual(crud.search("items", q))
+    const cursorQ = { paging: "cursor" as const, limit: 10, where: where().eq("name", "a") }
+    expect(crud.list("items", cursorQ)).toEqual(crud.search("items", cursorQ))
   })
 
   test("異常系: limit 不正は拒否", () => {
     const crud = crudFixture()
     expect(() => crud.search("items", { limit: 0 })).toThrow(CrudianError)
     expect(() => crud.search("items", { limit: -1 })).toThrow(CrudianError)
+  })
+
+  test("異常系: 相反入力 / 不正 offset / 不正 paging", () => {
+    const crud = crudFixture()
+    expect(() =>
+      crud.search("items", { paging: "offset", cursor: 1 }),
+    ).toThrow(CrudianError)
+    expect(() =>
+      crud.search("items", { paging: "cursor", offset: 0 }),
+    ).toThrow(CrudianError)
+    expect(() => crud.search("items", { offset: -1 })).toThrow(CrudianError)
+    expect(() =>
+      crud.search("items", { paging: "foo" as never }),
+    ).toThrow(CrudianError)
   })
 })
 
