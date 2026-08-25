@@ -1,0 +1,68 @@
+name: Publish npm
+
+on:
+  push:
+    branches:
+      - release
+
+concurrency:
+  group: publish-npm-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    name: publish @b4moss/crudian
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        working-directory: packages/js
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        working-directory: packages/js
+        run: bun run build
+
+      - name: Decide whether to publish
+        id: decide
+        run: bash .github/scripts/should-publish-crudian.sh
+
+      - name: Test bun-sqlite
+        if: steps.decide.outputs.skip != 'true'
+        working-directory: packages/js
+        run: bun test src/bun-sqlite
+
+      - name: Test drizzle
+        if: steps.decide.outputs.skip != 'true'
+        working-directory: packages/js
+        run: bun run test:drizzle
+
+      - name: Test prisma
+        if: steps.decide.outputs.skip != 'true'
+        working-directory: packages/js
+        run: bun run test:prisma
+
+      - name: Publish to npm
+        if: steps.decide.outputs.skip != 'true'
+        working-directory: packages/js
+        run: npm publish --access public --provenance

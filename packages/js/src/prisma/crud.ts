@@ -47,13 +47,14 @@ export function createCrud(client: PrismaLikeClient): PrismaCrud {
       return { changes: Number(changes ?? 0) }
     },
     async get(sql, args = []) {
-      const rows = (await active.$queryRawUnsafe<Row[]>(sql, ...args)) ?? []
+      const result = await active.$queryRawUnsafe<Row[] | Row>(sql, ...args)
+      const rows = normalizeQueryResult(result)
       const row = rows[0]
       return row == null ? undefined : normalizeRow(row)
     },
     async all(sql, args = []) {
-      const rows = (await active.$queryRawUnsafe<Row[]>(sql, ...args)) ?? []
-      return rows.map(normalizeRow)
+      const result = await active.$queryRawUnsafe<Row[] | Row>(sql, ...args)
+      return normalizeQueryResult(result).map(normalizeRow)
     },
     async transaction<T>(fn: () => Promise<T>): Promise<T> {
       return client.$transaction(async (tx) => {
@@ -67,4 +68,11 @@ export function createCrud(client: PrismaLikeClient): PrismaCrud {
       })
     },
   })
+}
+
+function normalizeQueryResult(result: Row[] | Row | null | undefined): Row[] {
+  if (result == null) return []
+  if (Array.isArray(result)) return result
+  if (typeof result === "object") return [result]
+  return []
 }
