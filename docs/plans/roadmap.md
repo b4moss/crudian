@@ -18,7 +18,7 @@
 | **v0.1.0** | Core CRUD Trait | 基本 CRUD + `search`/`list` + 条件ビルダー + `transaction` + 梱包骨格が、インメモリテスト付きで使える |
 | **v0.2.0** | Extended writes | `upsert` / `duplicate` / `bulk*` が同水準で揃い、Bun テンプレに載せられる |
 | **v0.3.0** | Other JS adapters | drizzle / prisma が bun-sqlite と同等 API・テストで通る |
-| **v0.5.0** | count / SearchResult.total | `count()` と `search`/`list` の `total` が bun-sqlite / drizzle / prisma で揃う（#47）。Turso（#42）は別スコープ |
+| **v0.5.0** | count / total / paging | `count()`・`total`（#47）と `paging` offset/cursor（#51、デフォルト offset）。Turso（#42）は別スコープ |
 
 ---
 
@@ -94,14 +94,17 @@ PHP / Go パッケージは本マイルストーンの必須範囲外（契約�
 
 ---
 
-## v0.5.0 — count / SearchResult.total
+## v0.5.0 — count / SearchResult.total / paging
 
-件数 API を契約に足し、既存アダプタへ展開する（#47）。
+件数 API とページング切替を契約に足し、既存アダプタへ展開する（#47 / #51）。
 
 | 機能 | 内容 | 備考 |
 |------|------|------|
 | `count` | `CountQuery`（`{ where? }`）→ `number` | where コンパイルは `search` と共用 |
-| `SearchResult.total` | where 全件数を常時付与 | limit / cursor 非依存。オプトインなし |
+| `SearchResult.total` | where 全件数を常時付与 | limit / cursor / offset 非依存 |
+| `paging` | `"offset" \| "cursor"`（デフォルト `"offset"`） | 破壊的変更。相反入力は拒否 |
+| offset 戻り | `{ items, total, offset, limit, hasMore }` | |
+| cursor 戻り | `{ items, nextCursor, hasMore, total }` | 既存 + total |
 | 対象 | bun-sqlite / drizzle / prisma | 共有 sync / async 層で実装 |
 | テスト | [`docs/tests/v0.5.0.md`](../tests/v0.5.0.md) | |
 
@@ -127,6 +130,7 @@ Turso SDK（#42）は同マイルストーンの別 Issue スコープ。
 | テンプレ試し食い | | △ | | |
 | drizzle / prisma | | | ✓ | |
 | `count` / `SearchResult.total` | | | | ✓ |
+| `paging` offset/cursor | | | | ✓ |
 
 △ = 推奨（必須にするかは未決）
 
@@ -146,6 +150,7 @@ Turso SDK（#42）は同マイルストーンの別 Issue スコープ。
 | **v0.3.0** | #12 / #13 drizzle |
 | | #14 / #15 prisma |
 | **v0.5.0** | #47 `count` / `SearchResult.total` |
+| | #51 `search`/`list` offset/cursor `paging` |
 | | #42 Turso SDK（本ロードマップ上は別スコープ） |
 
 クローズ済み（方針変更により機能 Issue へ内包）: #10 / #11

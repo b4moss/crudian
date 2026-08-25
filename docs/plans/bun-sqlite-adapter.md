@@ -36,7 +36,9 @@ const crud = createCrud(db)
 
 crud.create(table, cols)            // 対象行を返す
 crud.read<T>(table, query)          // 1件 or null
-crud.search<T>(table, query)        // 正式。{ items, nextCursor, hasMore, total } / nextCursor は生 id
+crud.search<T>(table, query)        // 正式。paging デフォルト offset。戻りはユニオン
+                                    // offset: { items, total, offset, limit, hasMore }
+                                    // cursor: { items, nextCursor, hasMore, total }
 crud.list<T>(table, query)          // search の別名
 crud.count(table, query?)           // where 全件数（number）。CountQuery は { where? }
 crud.update / upsert / duplicate    // 対象行。0件なら null
@@ -59,7 +61,7 @@ crud.transaction(fn)                // ヘルパ（自動 TX は張らない）
 
 - ORM 風モデル、リレーション、マイグレーション
 - 全文検索
-- offset ページング（cursor のみ）
+- orderBy の任意指定（当面 `id` 昇順固定）
 - アダプタ横断の共有テストスイート（bun-sqlite は `bun:test` のみ）
 - ライブラリ内部での自動トランザクション（ヘルパは提供する）
 
