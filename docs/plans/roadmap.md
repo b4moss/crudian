@@ -94,23 +94,39 @@ PHP / Go パッケージは本マイルストーンの必須範囲外（契約�
 
 ---
 
+## v0.5.0 — count / SearchResult.total
+
+件数 API を契約に足し、既存アダプタへ展開する（#47）。
+
+| 機能 | 内容 | 備考 |
+|------|------|------|
+| `count` | `CountQuery`（`{ where? }`）→ `number` | where コンパイルは `search` と共用 |
+| `SearchResult.total` | where 全件数を常時付与 | limit / cursor 非依存。オプトインなし |
+| 対象 | bun-sqlite / drizzle / prisma | 共有 sync / async 層で実装 |
+| テスト | [`docs/tests/v0.5.0.md`](../tests/v0.5.0.md) | |
+
+Turso SDK（#42）は同マイルストーンの別 Issue スコープ。
+
+---
+
 ## 機能 × マイルストーン早見
 
-| 機能 | v0.1.0 | v0.2.0 | v0.3.0 |
-|------|:------:|:------:|:------:|
-| 共有契約・ビルダー型 | ✓ | | |
-| `createCrud` / 生 `db` | ✓ | | |
-| `create` / `read` / `update` / `delete` | ✓ | | |
-| `search` / `list` + cursor | ✓ | | |
-| 条件ビルダー（演算子・and/or） | ✓ | | |
-| `transaction` | ✓ | | |
-| `tsc` / `exports` / 誤 import ガード | ✓ | | |
-| Core のインメモリテスト | ✓ | | |
-| `upsert` / `duplicate` | | ✓ | |
-| `bulk*` | | ✓ | |
-| Extended のインメモリテスト | | ✓ | |
-| テンプレ試し食い | | △ | |
-| drizzle / prisma | | | ✓ |
+| 機能 | v0.1.0 | v0.2.0 | v0.3.0 | v0.5.0 |
+|------|:------:|:------:|:------:|:------:|
+| 共有契約・ビルダー型 | ✓ | | | |
+| `createCrud` / 生 `db` | ✓ | | | |
+| `create` / `read` / `update` / `delete` | ✓ | | | |
+| `search` / `list` + cursor | ✓ | | | |
+| 条件ビルダー（演算子・and/or） | ✓ | | | |
+| `transaction` | ✓ | | | |
+| `tsc` / `exports` / 誤 import ガード | ✓ | | | |
+| Core のインメモリテスト | ✓ | | | |
+| `upsert` / `duplicate` | | ✓ | | |
+| `bulk*` | | ✓ | | |
+| Extended のインメモリテスト | | ✓ | | |
+| テンプレ試し食い | | △ | | |
+| drizzle / prisma | | | ✓ | |
+| `count` / `SearchResult.total` | | | | ✓ |
 
 △ = 推奨（必須にするかは未決）
 
