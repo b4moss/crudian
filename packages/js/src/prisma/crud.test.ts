@@ -172,7 +172,7 @@ describe("prisma.count", () => {
 })
 
 describe("prisma.searchList", () => {
-  test("正常系: ページングと list 別名", async () => {
+  test("正常系: デフォルト offset と list 別名", async () => {
     const crud = await crudFixture()
     for (let i = 0; i < 5; i++) {
       await crud.create("items", { name: `n${i}`, score: i })
@@ -180,9 +180,11 @@ describe("prisma.searchList", () => {
     const page1 = await crud.search("items", { limit: 2 })
     assert.equal(page1.items.length, 2)
     assert.equal(page1.hasMore, true)
-    assert.equal(page1.nextCursor, 2)
     assert.equal(page1.total, 5)
-    const page2 = await crud.search("items", { limit: 2, cursor: page1.nextCursor })
+    assert.equal("offset" in page1 && page1.offset, 0)
+    assert.equal("limit" in page1 && page1.limit, 2)
+    assert.equal("nextCursor" in page1, false)
+    const page2 = await crud.search("items", { limit: 2, offset: 2 })
     assert.deepEqual(
       page2.items.map((i) => i.id),
       [3, 4],
@@ -190,6 +192,26 @@ describe("prisma.searchList", () => {
     assert.equal(page2.total, 5)
     const q = { limit: 10, where: where().eq("name", "n0") }
     assert.deepEqual(await crud.list("items", q), await crud.search("items", q))
+  })
+
+  test("正常系: cursor 明示", async () => {
+    const crud = await crudFixture()
+    for (let i = 0; i < 5; i++) {
+      await crud.create("items", { name: `n${i}`, score: i })
+    }
+    const page1 = await crud.search("items", { paging: "cursor", limit: 2 })
+    assert.equal(page1.hasMore, true)
+    assert.equal("nextCursor" in page1 && page1.nextCursor, 2)
+    assert.equal("offset" in page1, false)
+    const page2 = await crud.search("items", {
+      paging: "cursor",
+      limit: 2,
+      cursor: "nextCursor" in page1 ? page1.nextCursor : null,
+    })
+    assert.deepEqual(
+      page2.items.map((i) => i.id),
+      [3, 4],
+    )
   })
 
   test("正常系: where 演算子", async () => {
@@ -213,11 +235,19 @@ describe("prisma.searchList", () => {
     )
   })
 
-  test("異常系: limit / in 空", async () => {
+  test("異常系: limit / in 空 / 相反入力", async () => {
     const crud = await crudFixture()
     await assert.rejects(() => crud.search("items", { limit: 0 }), CrudianError)
     await assert.rejects(
       () => crud.search("items", { where: where().in("name", []) }),
+      CrudianError,
+    )
+    await assert.rejects(
+      () => crud.search("items", { paging: "offset", cursor: 1 }),
+      CrudianError,
+    )
+    await assert.rejects(
+      () => crud.search("items", { paging: "cursor", offset: 0 }),
       CrudianError,
     )
   })
