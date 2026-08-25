@@ -13,5 +13,6 @@ export {
   type Row,
   type SearchResult,
   type SearchQuery,
+  type CountQuery,
   type ReadQuery,
 } from "../index.js"

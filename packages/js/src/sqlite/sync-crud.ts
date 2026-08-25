@@ -1,6 +1,7 @@
 import {
   CrudianError,
   assertString,
+  type CountQuery,
   type DeleteQuery,
   type DuplicateQuery,
   type ReadQuery,
@@ -40,6 +41,7 @@ export type SyncSqliteCrud<TDb> = {
   bulkUpsert(table: string, rows: Record<string, unknown>[]): number
   search<T extends Row = Row>(table: string, query?: SearchQuery): SearchResult<T>
   list<T extends Row = Row>(table: string, query?: SearchQuery): SearchResult<T>
+  count(table: string, query?: CountQuery): number
   transaction<T>(fn: () => T): T
 }
 
@@ -182,11 +184,23 @@ export function createSyncSqliteCrud<TDb>(
           ? last.id
           : null
 
-      return { items, nextCursor, hasMore }
+      const total = crud.count(table, { where: query.where })
+      return { items, nextCursor, hasMore, total }
     },
 
     list<T extends Row = Row>(table: string, query?: SearchQuery): SearchResult<T> {
       return crud.search<T>(table, query)
+    },
+
+    count(table: string, query: CountQuery = {}): number {
+      assertString(table, "table")
+      const tbl = quoteIdent(table)
+      const where = compileWhere(resolveWhere(query.where))
+      const sql =
+        `SELECT COUNT(*) AS ${quoteIdent("row_count")} FROM ${tbl}` +
+        (where.sql ? ` WHERE ${where.sql}` : "")
+      const row = ex.get(sql, where.args)
+      return Number(row?.row_count ?? 0)
     },
 
     upsert<T extends Row = Row>(table: string, cols: Record<string, unknown>): T {

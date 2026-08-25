@@ -42,7 +42,7 @@
     "test:prisma": "bun run prisma:generate && tsx --test src/prisma/crud.test.ts"
   },
   "engines": {
-    "node": ">=22",
+    "node": ">=24",
     "bun": ">=1.0.0"
   },
   "peerDependencies": {

@@ -6,6 +6,8 @@ export type SearchResult<T = Row> = {
   items: T[]
   nextCursor: number | string | null
   hasMore: boolean
+  /** Rows matching `where` (ignores limit/cursor). */
+  total: number
 }
 
 export type WhereInput = WhereBuilder | WhereNode
@@ -21,6 +23,10 @@ export type SearchQuery = {
   limit?: number
   /** Raw `id` cursor (keyset). */
   cursor?: number | string | null
+}
+
+export type CountQuery = {
+  where?: WhereInput
 }
 
 export type DeleteQuery = {

@@ -1,6 +1,7 @@
 import {
   CrudianError,
   assertString,
+  type CountQuery,
   type DeleteQuery,
   type DuplicateQuery,
   type ReadQuery,
@@ -55,6 +56,7 @@ export type AsyncSqliteCrud<TDb> = {
     table: string,
     query?: SearchQuery,
   ): Promise<SearchResult<T>>
+  count(table: string, query?: CountQuery): Promise<number>
   transaction<T>(fn: () => Promise<T>): Promise<T>
 }
 
@@ -100,11 +102,12 @@ export function createAsyncSqliteCrud<TDb>(
       const colSql = keys.map((k) => quoteIdent(k)).join(", ")
       const placeholders = keys.map(() => "?").join(", ")
       const args = keys.map((k) => cols[k])
-      await ex.run(`INSERT INTO ${tbl} (${colSql}) VALUES (${placeholders})`, args)
-
-      const idRow = await ex.get("SELECT last_insert_rowid() AS id")
-      const id = Number(idRow?.id)
-      const row = await ex.get(`SELECT * FROM ${tbl} WHERE "id" = ?`, [id])
+      // Single-statement insert+fetch avoids last_insert_rowid() across pooled
+      // connections (Prisma SQLite), which can return an empty row after COUNT.
+      const row = await ex.get(
+        `INSERT INTO ${tbl} (${colSql}) VALUES (${placeholders}) RETURNING *`,
+        args,
+      )
       return rowFromObject(row) as T
     },
 
@@ -212,7 +215,8 @@ export function createAsyncSqliteCrud<TDb>(
           ? last.id
           : null
 
-      return { items, nextCursor, hasMore }
+      const total = await crud.count(table, { where: query.where })
+      return { items, nextCursor, hasMore, total }
     },
 
     async list<T extends Row = Row>(
@@ -220,6 +224,17 @@ export function createAsyncSqliteCrud<TDb>(
       query?: SearchQuery,
     ): Promise<SearchResult<T>> {
       return crud.search<T>(table, query)
+    },
+
+    async count(table: string, query: CountQuery = {}): Promise<number> {
+      assertString(table, "table")
+      const tbl = quoteIdent(table)
+      const where = compileWhere(resolveWhere(query.where))
+      const sql =
+        `SELECT COUNT(*) AS ${quoteIdent("row_count")} FROM ${tbl}` +
+        (where.sql ? ` WHERE ${where.sql}` : "")
+      const row = await ex.get(sql, where.args)
+      return Number(row?.row_count ?? 0)
     },
 
     async upsert<T extends Row = Row>(
