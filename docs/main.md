@@ -118,14 +118,15 @@ const crud = createCrud(db)
 
 ## ランタイム / テスト
 
-- 対応ランタイム: **Node.js 22+**、および Bun
+- 対応ランタイム: **Node.js 24+**、および Bun（Go / PHP パッケージは各言語の通常ランタイム）
 - テストはアダプタごとに、**そのアダプタが動くランタイムで**行う（共通テストの共有はしない）
+- ローカル / E2E 用の全部入り環境: [`docker/README.md`](../docker/README.md)（Node 24 / Bun / Go 1.26 / PHP + Postgres / MySQL / MariaDB）
 
 | アダプタ | ランタイム | テスト |
 |----------|------------|--------|
 | `bun-sqlite` | Bun | `bun:test`（`bun test`） |
-| `drizzle` | Node.js 22+ | `node:test`（`node --test`） |
-| `prisma` | Node.js 22+ | `node:test`（`node --test`） |
+| `drizzle` | Node.js 24+ | `node:test`（`node --test`） |
+| `prisma` | Node.js 24+ | `node:test`（`node --test`） |
 
 ## マイルストーン
 

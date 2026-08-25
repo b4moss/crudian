@@ -18,6 +18,7 @@
 | **v0.1.0** | Core CRUD Trait | 基本 CRUD + `search`/`list` + 条件ビルダー + `transaction` + 梱包骨格が、インメモリテスト付きで使える |
 | **v0.2.0** | Extended writes | `upsert` / `duplicate` / `bulk*` が同水準で揃い、Bun テンプレに載せられる |
 | **v0.3.0** | Other JS adapters | drizzle / prisma が bun-sqlite と同等 API・テストで通る |
+| **v0.4.0** | Docker / E2E harness | 全ランタイム 1 コンテナ + Postgres / MySQL / MariaDB 上の E2E 基盤（[#44](https://github.com/b4moss/crudian/issues/44)） |
 
 ---
 
@@ -128,5 +129,6 @@ PHP / Go パッケージは本マイルストーンの必須範囲外（契約�
 | | #18 Bun テンプレ試し食い（推奨） |
 | **v0.3.0** | #12 / #13 drizzle |
 | | #14 / #15 prisma |
+| **v0.4.0** | #44 Docker / Dev Containers（全ランタイム 1 コンテナ + 実 DB E2E） |
 
 クローズ済み（方針変更により機能 Issue へ内包）: #10 / #11
