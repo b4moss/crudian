@@ -9,7 +9,7 @@
 - **機能単位で実装とインメモリ DB テスト（Bun + `bun:test`）を同時に閉じる**
 - 旧定義の「v0.1 = 全メソッド実装 / v0.2 = テストのみ」は改め、下表の分割に更新する
 - v0.3.0 以降で drizzle / prisma / libsql（および将来 PHP / Go）へ同じ語彙を展開する
-- **バージョンはアダプタ別ではなくモノリポ共通で上げる**（未変更アダプタでも版が飛ぶことがある）。詳細は `docs/main.md` の「バージョン方針」
+- **バージョンは言語（配布物）単位**（JS npm と Go module は独立）。同一言語内のアダプタは単一版に同梱。言語間で版が飛ぶのは許容。詳細は `docs/main.md` の「バージョン方針」
 
 ## マイルストーン一覧
 
@@ -135,19 +135,21 @@ PHP / Go パッケージは本マイルストーンの必須範囲外（契約�
 
 ## v0.7.0 — Go module
 
-JS 契約を Go へ移植する（#48）。
+JS 契約を Go へ移植する（#48）。**Go の公開初版は `0.7.0`**（`packages/go/VERSION`）。npm（`@b4moss/crudian`）は変更がなければ **`0.6.0` のまま**でよい。
 
 | 機能 | 内容 | 備考 |
 |------|------|------|
 | module | `github.com/b4moss/crudian/go` | 単一 go.mod。パッケージ `crudian` / `gorm` / `libsql` |
 | API | 同期 + `context.Context` | JS sync/async 分裂なし |
-| Dialect | 初手から切る | Sqlite 実装。他 RDB は stub（実装スコープ外） |
-| `go/gorm` | GORM + SQLite | 生 `*gorm.DB` 注入 |
-| `go/libsql` | 公式 libSQL `database/sql` | 第一候補: `libsql-client-go` |
+| Dialect | 初手から切る | **いまは Sqlite のみ**。MySQL / Postgres は将来（stub） |
+| `go/gorm` | GORM | 生 `*gorm.DB` 注入。**v0.7.0 は SQLite のみ** |
+| `go/libsql` | 公式 libSQL `database/sql` | 第一候補: `libsql-client-go`（SQLite 互換） |
+| 配布 | Go module path + git タグ | タグ **`packages/go/v0.7.0`**。npm 風レジストリへの upload はなし |
 | テスト | [`docs/tests/v0.7.0.md`](../tests/v0.7.0.md) | Go 1.26 + `testing` |
+| CI/CD | [`.github/CI.md`](../../.github/CI.md) | 変更時のみ `packages/go` を lint/test。CD は当該タグ時のみ |
 | 設計 | [`go-module.md`](./go-module.md) | |
 
-**対象外:** GORM の SQLite 以外、可変 PK（#72）、PHP
+**対象外（v0.7.0）:** GORM の MySQL / PostgreSQL（**将来対応**）、可変 PK（#72）、PHP、製品 E2E の CI 実行
 
 ### v0.7.0 推奨実装順
 
@@ -155,7 +157,8 @@ JS 契約を Go へ移植する（#48）。
 2. `crudian` 共有（where / Dialect / CRUD）
 3. `gorm` + SQLite 結合テスト
 4. `libsql` + 結合テスト
-5. CI（`go test ./...`）・README → タグ時に版整合
+5. CI（path filter + `go test` / lint）・README
+6. 公開: `packages/go/VERSION=0.7.0` に対しタグ `packages/go/v0.7.0`（npm は触らない）
 
 ---
 

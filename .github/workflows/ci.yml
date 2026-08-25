@@ -1,10 +1,21 @@
 name: CI
 
+# Policy: .github/CI.md
+# - Lint + unit/integration on PRs (and push to seed pass-caches)
+# - Only packages touched by the diff (or this workflow) run
+# - Same content hash that already passed is skipped via GHA cache marker
+# - No product E2E in CI
+
 on:
   pull_request:
     branches:
       - develop
       - "dev-v*"
+  push:
+    branches:
+      - develop
+      - "dev-v*"
+      - main
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -12,82 +23,359 @@ concurrency:
 
 permissions:
   contents: read
+  actions: write
 
 jobs:
+  changes:
+    name: detect package changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      js: ${{ steps.set.outputs.js }}
+      go: ${{ steps.set.outputs.go }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Path filter
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            js:
+              - 'packages/js/**'
+            go:
+              - 'packages/go/**'
+            workflow:
+              - '.github/workflows/ci.yml'
+              - '.github/CI.md'
+
+      - name: Resolve outputs
+        id: set
+        run: |
+          # Workflow edits re-run all package jobs.
+          if [[ "${{ steps.filter.outputs.workflow }}" == "true" ]]; then
+            echo "js=true" >> "$GITHUB_OUTPUT"
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "js=${{ steps.filter.outputs.js }}" >> "$GITHUB_OUTPUT"
+            echo "go=${{ steps.filter.outputs.go }}" >> "$GITHUB_OUTPUT"
+          fi
+          # Push to default integration branches always seeds caches for changed trees;
+          # path filter still limits which jobs run.
+
+  lint-js:
+    name: lint packages/js
+    needs: changes
+    if: needs.changes.outputs.js == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: packages/js
+    env:
+      PASS_MARKER: .ci/lint-js-passed
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Restore pass marker
+        id: pass-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PASS_MARKER }}
+          key: lint-js-${{ hashFiles('packages/js/src/**', 'packages/js/package.json', 'packages/js/tsconfig.json', 'packages/js/bun.lock') }}
+
+      - name: Skip notice
+        if: steps.pass-cache.outputs.cache-hit == 'true'
+        run: echo "lint-js already passed for this content hash; skipping."
+
+      - name: Setup Bun
+        if: steps.pass-cache.outputs.cache-hit != 'true'
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Cache Bun install
+        if: steps.pass-cache.outputs.cache-hit != 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-install-${{ runner.os }}-${{ hashFiles('packages/js/bun.lock') }}
+          restore-keys: |
+            bun-install-${{ runner.os }}-
+
+      - name: Install dependencies
+        if: steps.pass-cache.outputs.cache-hit != 'true'
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck (tsc --noEmit)
+        if: steps.pass-cache.outputs.cache-hit != 'true'
+        run: bunx tsc -p tsconfig.json --noEmit
+
+      - name: Mark passed
+        if: steps.pass-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p "$(dirname "$PASS_MARKER")"
+          # marker path is repo-root relative for cache
+          mkdir -p "$GITHUB_WORKSPACE/$(dirname "$PASS_MARKER")"
+          date -u +"passed %Y-%m-%dT%H:%M:%SZ" > "$GITHUB_WORKSPACE/$PASS_MARKER"
+
   bun-sqlite:
-    name: packages/js (bun-sqlite)
+    name: test packages/js (bun-sqlite)
+    needs: changes
+    if: needs.changes.outputs.js == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
       run:
         working-directory: packages/js
+    env:
+      PASS_MARKER: .ci/test-js-bun-passed
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Restore pass marker
+        id: pass-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PASS_MARKER }}
+          key: test-js-bun-${{ hashFiles('packages/js/src/**', 'packages/js/package.json', 'packages/js/tsconfig.json', 'packages/js/bun.lock') }}
+
+      - name: Skip notice
+        if: steps.pass-cache.outputs.cache-hit == 'true'
+        run: echo "bun-sqlite tests already passed for this content hash; skipping."
+
       - name: Setup Bun
+        if: steps.pass-cache.outputs.cache-hit != 'true'
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
+      - name: Cache Bun install
+        if: steps.pass-cache.outputs.cache-hit != 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-install-${{ runner.os }}-${{ hashFiles('packages/js/bun.lock') }}
+          restore-keys: |
+            bun-install-${{ runner.os }}-
+
       - name: Install dependencies
+        if: steps.pass-cache.outputs.cache-hit != 'true'
         run: bun install --frozen-lockfile
 
       - name: Test bun-sqlite
+        if: steps.pass-cache.outputs.cache-hit != 'true'
         run: bun test src/bun-sqlite
 
       - name: Build
+        if: steps.pass-cache.outputs.cache-hit != 'true'
         run: bun run build
 
+      - name: Mark passed
+        if: steps.pass-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/$(dirname "$PASS_MARKER")"
+          date -u +"passed %Y-%m-%dT%H:%M:%SZ" > "$GITHUB_WORKSPACE/$PASS_MARKER"
+
   node-adapters:
-    name: packages/js (drizzle / prisma / libsql)
+    name: test packages/js (drizzle / prisma / libsql)
+    needs: changes
+    if: needs.changes.outputs.js == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
       run:
         working-directory: packages/js
+    env:
+      PASS_MARKER: .ci/test-js-node-passed
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Restore pass marker
+        id: pass-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PASS_MARKER }}
+          key: test-js-node-${{ hashFiles('packages/js/src/**', 'packages/js/package.json', 'packages/js/tsconfig.json', 'packages/js/bun.lock', 'packages/js/prisma/**') }}
+
+      - name: Skip notice
+        if: steps.pass-cache.outputs.cache-hit == 'true'
+        run: echo "node adapter tests already passed for this content hash; skipping."
+
       - name: Setup Bun
+        if: steps.pass-cache.outputs.cache-hit != 'true'
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
       - name: Setup Node
+        if: steps.pass-cache.outputs.cache-hit != 'true'
         uses: actions/setup-node@v4
         with:
           node-version: "24"
 
+      - name: Cache Bun install
+        if: steps.pass-cache.outputs.cache-hit != 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-install-${{ runner.os }}-${{ hashFiles('packages/js/bun.lock') }}
+          restore-keys: |
+            bun-install-${{ runner.os }}-
+
       - name: Install dependencies
+        if: steps.pass-cache.outputs.cache-hit != 'true'
         run: bun install --frozen-lockfile
 
       - name: Test drizzle
+        if: steps.pass-cache.outputs.cache-hit != 'true'
         run: bun run test:drizzle
 
       - name: Test prisma
+        if: steps.pass-cache.outputs.cache-hit != 'true'
         run: bun run test:prisma
 
       - name: Test libsql
+        if: steps.pass-cache.outputs.cache-hit != 'true'
         run: bun run test:libsql
 
+      - name: Mark passed
+        if: steps.pass-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/$(dirname "$PASS_MARKER")"
+          date -u +"passed %Y-%m-%dT%H:%M:%SZ" > "$GITHUB_WORKSPACE/$PASS_MARKER"
+
+  lint-go:
+    name: lint packages/go
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: packages/go
+    env:
+      PASS_MARKER: .ci/lint-go-passed
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Restore pass marker
+        id: pass-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PASS_MARKER }}
+          key: lint-go-${{ hashFiles('packages/go/**/*.go', 'packages/go/go.mod', 'packages/go/go.sum') }}
+
+      - name: Skip notice
+        if: steps.pass-cache.outputs.cache-hit == 'true'
+        run: echo "lint-go already passed for this content hash; skipping."
+
+      - name: Setup Go
+        if: steps.pass-cache.outputs.cache-hit != 'true'
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+          cache-dependency-path: packages/go/go.sum
+
+      - name: gofmt
+        if: steps.pass-cache.outputs.cache-hit != 'true'
+        run: |
+          out="$(gofmt -l .)"
+          if [[ -n "$out" ]]; then
+            echo "gofmt needed on:"
+            echo "$out"
+            exit 1
+          fi
+
+      - name: go vet
+        if: steps.pass-cache.outputs.cache-hit != 'true'
+        run: go vet ./...
+
+      - name: Mark passed
+        if: steps.pass-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/$(dirname "$PASS_MARKER")"
+          date -u +"passed %Y-%m-%dT%H:%M:%SZ" > "$GITHUB_WORKSPACE/$PASS_MARKER"
+
   go-module:
-    name: packages/go (gorm / libsql)
+    name: test packages/go (gorm / libsql)
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
       run:
         working-directory: packages/go
+    env:
+      PASS_MARKER: .ci/test-go-passed
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Restore pass marker
+        id: pass-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PASS_MARKER }}
+          key: test-go-${{ hashFiles('packages/go/**/*.go', 'packages/go/go.mod', 'packages/go/go.sum') }}
+
+      - name: Skip notice
+        if: steps.pass-cache.outputs.cache-hit == 'true'
+        run: echo "go tests already passed for this content hash; skipping."
+
       - name: Setup Go
+        if: steps.pass-cache.outputs.cache-hit != 'true'
         uses: actions/setup-go@v5
         with:
           go-version: "1.26.x"
           cache-dependency-path: packages/go/go.sum
 
       - name: Test
+        if: steps.pass-cache.outputs.cache-hit != 'true'
         run: go test ./...
+
+      - name: Mark passed
+        if: steps.pass-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/$(dirname "$PASS_MARKER")"
+          date -u +"passed %Y-%m-%dT%H:%M:%SZ" > "$GITHUB_WORKSPACE/$PASS_MARKER"
+
+  ci-result:
+    name: CI result
+    needs:
+      - changes
+      - lint-js
+      - bun-sqlite
+      - node-adapters
+      - lint-go
+      - go-module
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Aggregate
+        run: |
+          set -euo pipefail
+          echo "js=${{ needs.changes.outputs.js }} go=${{ needs.changes.outputs.go }}"
+          results=(
+            "${{ needs.lint-js.result }}"
+            "${{ needs.bun-sqlite.result }}"
+            "${{ needs.node-adapters.result }}"
+            "${{ needs.lint-go.result }}"
+            "${{ needs.go-module.result }}"
+          )
+          for r in "${results[@]}"; do
+            case "$r" in
+              success|skipped) ;;
+              *)
+                echo "Required job finished as: $r"
+                exit 1
+                ;;
+            esac
+          done
+          echo "All required CI jobs are green (or skipped by path filter)."
