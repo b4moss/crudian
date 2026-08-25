@@ -10,8 +10,8 @@ JS 版（`@b4moss/crudian`）の CRUD 契約を Go へ移植する方針のメ�
 
 - charter / 薄い DDD の共通 CRUD を **Go module** として配布する
 - メソッド語彙・Adapter 切り分けは Node.js 版と同等
-- GORM は各種 RDB に繋がるため、**初手から Dialect 層を切る**（実装はまず SQLite。他方言は stub）
-- 実装順: (1) GORM / SQLite (2) libSQL SDK
+- GORM は各種 RDB に繋がるため、**初手から Dialect 層を切る**（**現状の実装は SQLite のみ**。MySQL / PostgreSQL は将来対応予定で、いまは stub）
+- 実装順（v0.7.0）: (1) GORM / SQLite (2) libSQL SDK → その後に他 RDB Dialect
 
 ## 命名・パス
 
@@ -94,8 +94,8 @@ type Dialect interface {
 }
 ```
 
-- **実装する**: `SqliteDialect`（`"ident"`、`?`、既存 JS SQLite SQL と同趣旨）
-- **stub**: Postgres / MySQL（コメントで空白。GORM で SQLite 以外は本マイルストーンのスコープ外）
+- **実装する（v0.7.0）**: `SqliteDialect`（`"ident"`、`?`、既存 JS SQLite SQL と同趣旨）
+- **将来**: Postgres / MySQL Dialect を同インタフェースで実装し、GORM 経由で接続する（本マイルストーンでは stub / 未サポート）
 
 ## Executor
 
@@ -142,7 +142,7 @@ type Executor interface {
 
 ## 意図的な非対応（v0.7.0）
 
-- GORM での SQLite 以外の RDB（#48 スコープ外。#73 は JS 側の話）
+- **GORM での MySQL / PostgreSQL**（**将来対応予定**。v0.7.0 は SQLite のみ。#73 は JS 側 Dialect の話）
 - 可変 PK カラム名（#72）
 - ORM 風モデル、マイグレーション、全文検索、offset ページング
 - PHP
@@ -155,9 +155,9 @@ type Executor interface {
 |---|------|------|
 | 1 | Module path | `github.com/b4moss/crudian/go` + パッケージ `gorm` / `libsql` / `crudian` |
 | 2 | API 形 | 同期 + `context.Context`（全メソッド） |
-| 3 | Dialect | 初手からインタフェース。Sqlite 実装 + 他 stub |
+| 3 | Dialect | 初手からインタフェース。**いまは Sqlite のみ実装**。MySQL / Postgres は将来 |
 | 4 | libSQL | 公式 `libsql-client-go` 第一候補（local `file://` は companion sqlite 要） |
-| 5 | 実装順 | GORM/SQLite → libSQL |
+| 5 | 実装順 | GORM/SQLite → libSQL（→ 後続で他 RDB） |
 | 6 | マイルストーン | v0.7.0（Go 公開 SemVer 初版も 0.7.0） |
 | 7 | PK / cursor | 当面 `id` 固定 |
 | 8 | 言語間バージョン | 独立可（npm 据え置きで Go のみリリース可） |

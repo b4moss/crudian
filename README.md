@@ -39,11 +39,11 @@ go get github.com/b4moss/crudian/go@v0.7.0
 
 | Import path | Role |
 |-------------|------|
-| `github.com/b4moss/crudian/go/gorm` | GORM + SQLite adapter |
+| `github.com/b4moss/crudian/go/gorm` | GORM adapter (**SQLite today**; MySQL/Postgres later) |
 | `github.com/b4moss/crudian/go/libsql` | libSQL (`database/sql`) adapter |
 | `github.com/b4moss/crudian/go/crudian` | Shared contract, `Where`, Dialect, CRUD |
 
-Usage, drivers, and API notes: [`packages/go/README.md`](./packages/go/README.md).
+Usage, drivers, and API notes: [`packages/go/README.md`](./packages/go/README.md). Today’s Go adapters target **SQLite only**; **MySQL and PostgreSQL support is planned** on the same Dialect/CRUD surface.
 
 **Release:** tag `packages/go/vX.Y.Z` matching `VERSION`. Root tag `vX.Y.Z` alone does **not** publish Go. CD creates a GitHub Release and pings the module proxy; it does not upload to npm.
 

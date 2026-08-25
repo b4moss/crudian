@@ -1,6 +1,8 @@
 # Go module (`github.com/b4moss/crudian/go`)
 
-CRUD facade matching the JavaScript `@b4moss/crudian` contract, for **GORM (SQLite)** and **libSQL**.
+CRUD facade matching the JavaScript `@b4moss/crudian` contract, for **GORM** and **libSQL**.
+
+**Database support today: SQLite only** (GORM + SQLite, and libSQL’s SQLite-compatible engine). **MySQL and PostgreSQL are planned** via the existing `Dialect` layer; stubs exist, but those backends are not implemented or supported in v0.7.0.
 
 API shape: **synchronous methods with `context.Context` as the first argument** (no JS-style sync/async split). Rows are `map[string]any` (`crudian.Row`) — not ORM structs.
 
@@ -155,7 +157,7 @@ CI policy (path filters, lint, pass-markers): [`.github/CI.md`](../../.github/CI
 
 ## Out of scope (v0.7.0)
 
-- GORM backends other than SQLite
+- **MySQL / PostgreSQL** (and other non-SQLite GORM drivers) — **planned later**; Dialect stubs only today
 - Configurable primary-key column names
 - ORM model mapping, migrations, full-text search, offset pagination
 - Product E2E in CI

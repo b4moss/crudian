@@ -141,15 +141,15 @@ JS 契約を Go へ移植する（#48）。**Go の公開初版は `0.7.0`**（`
 |------|------|------|
 | module | `github.com/b4moss/crudian/go` | 単一 go.mod。パッケージ `crudian` / `gorm` / `libsql` |
 | API | 同期 + `context.Context` | JS sync/async 分裂なし |
-| Dialect | 初手から切る | Sqlite 実装。他 RDB は stub（実装スコープ外） |
-| `go/gorm` | GORM + SQLite | 生 `*gorm.DB` 注入 |
-| `go/libsql` | 公式 libSQL `database/sql` | 第一候補: `libsql-client-go`（local `file://` は companion sqlite ドライバが必要） |
+| Dialect | 初手から切る | **いまは Sqlite のみ**。MySQL / Postgres は将来（stub） |
+| `go/gorm` | GORM | 生 `*gorm.DB` 注入。**v0.7.0 は SQLite のみ** |
+| `go/libsql` | 公式 libSQL `database/sql` | 第一候補: `libsql-client-go`（SQLite 互換） |
 | 配布 | Go module path + git タグ | タグ **`packages/go/v0.7.0`**。npm 風レジストリへの upload はなし |
 | テスト | [`docs/tests/v0.7.0.md`](../tests/v0.7.0.md) | Go 1.26 + `testing` |
 | CI/CD | [`.github/CI.md`](../../.github/CI.md) | 変更時のみ `packages/go` を lint/test。CD は当該タグ時のみ |
 | 設計 | [`go-module.md`](./go-module.md) | |
 
-**対象外:** GORM の SQLite 以外、可変 PK（#72）、PHP、製品 E2E の CI 実行
+**対象外（v0.7.0）:** GORM の MySQL / PostgreSQL（**将来対応**）、可変 PK（#72）、PHP、製品 E2E の CI 実行
 
 ### v0.7.0 推奨実装順
 

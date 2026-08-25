@@ -131,8 +131,8 @@ const crud = createCrud(db)
 | `drizzle` | Node.js 24+ | `node:test`（`node --test`） |
 | `prisma` | Node.js 24+ | `node:test`（`node --test`） |
 | `libsql`（JS） | Node.js 24+ / Bun | `node:test`（`node --test`） |
-| `go/gorm` | Go 1.26+ | `go test`（GORM + SQLite） |
-| `go/libsql` | Go 1.26+ | `go test`（公式 libSQL `database/sql`） |
+| `go/gorm` | Go 1.26+ | `go test`（GORM + **SQLite のみ**。MySQL / Postgres は将来） |
+| `go/libsql` | Go 1.26+ | `go test`（公式 libSQL `database/sql`、SQLite 互換） |
 
 ## マイルストーン
 
@@ -145,7 +145,7 @@ const crud = createCrud(db)
 | **v0.3.0** | Drizzle / Prisma で同等の実装とテストが通ること |
 | **v0.5.0** | `count()` と `SearchResult.total`（#47） |
 | **v0.6.0** | libSQL アダプタ（`@b4moss/crudian/libsql` / `@libsql/client`。#42） |
-| **v0.7.0** | Go モジュール（`go/gorm` SQLite + `go/libsql`。#48） |
+| **v0.7.0** | Go モジュール（`go/gorm` + `go/libsql`。**現状 SQLite のみ**。MySQL / Postgres は後続。#48） |
 
 ## バージョン方針
 
