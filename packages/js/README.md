@@ -4,6 +4,8 @@ CRUD abstraction for DDD repositories.
 
 One npm package, adapter subpaths. Shared contracts live at the package root; backends are imported from subpaths. Callers inject their own DB/client — crudian never opens connections or reads env secrets for you.
 
+**Versioning:** this npm package has its own SemVer (`package.json`). It is independent of the Go module (`packages/go/VERSION`). Shipping Go `0.7.0` does not require bumping this package.
+
 ## Install
 
 ```bash
