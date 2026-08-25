@@ -1,6 +1,6 @@
 {
   "name": "@b4moss/crudian",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "CRUD abstraction for DDD repositories",
   "type": "module",
   "license": "MIT",
@@ -25,6 +25,11 @@
       "types": "./dist/prisma/index.d.ts",
       "import": "./dist/prisma/index.js",
       "default": "./dist/prisma/index.js"
+    },
+    "./libsql": {
+      "types": "./dist/libsql/index.d.ts",
+      "import": "./dist/libsql/index.js",
+      "default": "./dist/libsql/index.js"
     }
   },
   "files": [
@@ -36,21 +41,26 @@
     "build": "tsc -p tsconfig.json",
     "prepublishOnly": "npm run build",
     "prisma:generate": "prisma generate --schema prisma/schema.prisma",
-    "test": "bun run test:bun-sqlite && bun run test:drizzle && bun run test:prisma",
+    "test": "bun run test:bun-sqlite && bun run test:drizzle && bun run test:prisma && bun run test:libsql",
     "test:bun-sqlite": "bun test src/bun-sqlite",
     "test:drizzle": "tsx --test src/drizzle/crud.test.ts",
-    "test:prisma": "bun run prisma:generate && tsx --test src/prisma/crud.test.ts"
+    "test:prisma": "bun run prisma:generate && tsx --test src/prisma/crud.test.ts",
+    "test:libsql": "tsx --test src/libsql/crud.test.ts"
   },
   "engines": {
     "node": ">=24",
     "bun": ">=1.0.0"
   },
   "peerDependencies": {
+    "@libsql/client": "^0.14.0 || ^0.15.0 || ^0.17.0",
     "@prisma/client": "^6.0.0",
     "better-sqlite3": "^11.0.0",
     "drizzle-orm": "^0.39.0 || ^0.40.0 || ^0.41.0 || ^0.44.0"
   },
   "peerDependenciesMeta": {
+    "@libsql/client": {
+      "optional": true
+    },
     "@prisma/client": {
       "optional": true
     },
@@ -62,6 +72,7 @@
     }
   },
   "devDependencies": {
+    "@libsql/client": "^0.17.4",
     "@prisma/client": "^6.14.0",
     "@types/better-sqlite3": "^7.6.13",
     "better-sqlite3": "^11.10.0",
@@ -78,6 +89,7 @@
     "bun",
     "drizzle",
     "prisma",
+    "libsql",
     "ddd"
   ],
   "repository": {

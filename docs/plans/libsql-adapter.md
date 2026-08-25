@@ -38,7 +38,7 @@ import { createClient } from "@libsql/client"
 import { createCrud } from "@b4moss/crudian/libsql"
 import { where } from "@b4moss/crudian"
 
-const client = createClient({ url: process.env.LIBSQL_URL ?? ":memory:" })
+const client = createClient({ url: process.env.LIBSQL_URL ?? "file:local.db" })
 const crud = createCrud(client)
 
 await crud.create("items", { name: "alpha", score: 1 })
@@ -75,7 +75,7 @@ prisma アダプタと同様に、`createAsyncSqliteCrud(client, ex)` へ渡す�
 | 項目 | 値 |
 |------|-----|
 | ランタイム | Node.js 24+ + `node:test`（drizzle / prisma と同じ） |
-| DB | `createClient({ url: ":memory:" })`（クラウド資格情報不要） |
+| DB | 一時ファイル（`file:...`）。クラウド資格情報不要。`:memory:` は推奨しない（TX で別接続になりやすい） |
 | 契約 | v0.1 / v0.2 / v0.5 相当を libsql で一式（[`v0.6.0.md`](../tests/v0.6.0.md)） |
 | 非対象 | リモート Turso Cloud E2E、認証トークン前提 |
 
@@ -100,6 +100,6 @@ prisma アダプタと同様に、`createAsyncSqliteCrud(client, ex)` へ渡す�
 | 2 | SDK | `@libsql/client` |
 | 3 | sync / async | async（prisma と同型） |
 | 4 | 共有層 | `createAsyncSqliteCrud` を再利用 |
-| 5 | テスト DB | `:memory:` |
+| テスト DB | 一時ファイル（`file:...`）。`:memory:` は接続／interactive TX で別 DB になりやすい |
 | 6 | マイルストーン | v0.6.0（#42）。v0.5.0 の count とは別スコープ |
 | 7 | 版上げ | モノリポ共通 `@b4moss/crudian` を `0.6.0` へ |

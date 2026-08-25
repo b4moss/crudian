@@ -118,7 +118,7 @@ PHP / Go パッケージは本マイルストーンの必須範囲外（契約�
 | `@b4moss/crudian/libsql` | bun-sqlite / prisma と同等 API（async） | peer: `@libsql/client` |
 | 入口 | `createCrud(client)` | 呼び出し側が作った Client を注入。生 client を `crud.db` で公開 |
 | 実装方針 | `createAsyncSqliteCrud` に薄い executor を渡す | prisma アダプタと同型 |
-| テスト | `:memory:` + `node:test` | [`docs/tests/v0.6.0.md`](../tests/v0.6.0.md) |
+| テスト | 一時ファイル DB + `node:test` | [`docs/tests/v0.6.0.md`](../tests/v0.6.0.md)。`:memory:` は TX と相性が悪いためテストではファイルを使う |
 | 設計 | [`libsql-adapter.md`](./libsql-adapter.md) | サブパスは商業名 Turso ではなく libSQL |
 
 **対象外:** `@tursodatabase/serverless`、リモート Cloud 前提の E2E、TypeORM（#43）
