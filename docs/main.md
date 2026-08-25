@@ -117,11 +117,11 @@ const crud = createCrud(db)
 | `packages/php/pdo-mysql` | 生 PHP + PDO MySQL |
 | `packages/php/pdo-postgres` | 生 PHP + PDO Postgres |
 | `packages/php/pdo-sqlite` | 生 PHP + PDO SQLite |
-| `packages/go/gorm` | Go + GORM |
+| `packages/go` | Go module `github.com/b4moss/crudian/go`（`crudian` / `gorm` / `libsql`） |
 
 ## ランタイム / テスト
 
-- 対応ランタイム: **Node.js 24+**、および Bun（Go / PHP パッケージは各言語の通常ランタイム）
+- 対応ランタイム: **Node.js 24+**、および Bun（Go **1.26+** / PHP パッケージは各言語の通常ランタイム）
 - テストはアダプタごとに、**そのアダプタが動くランタイムで**行う（共通テストの共有はしない）
 - ローカル / E2E 用の全部入り環境: [`docker/README.md`](../docker/README.md)（Node 24 / Bun / Go 1.26 / PHP + Postgres / MySQL / MariaDB）
 
@@ -130,7 +130,9 @@ const crud = createCrud(db)
 | `bun-sqlite` | Bun | `bun:test`（`bun test`） |
 | `drizzle` | Node.js 24+ | `node:test`（`node --test`） |
 | `prisma` | Node.js 24+ | `node:test`（`node --test`） |
-| `libsql` | Node.js 24+ / Bun | `node:test`（`node --test`） |
+| `libsql`（JS） | Node.js 24+ / Bun | `node:test`（`node --test`） |
+| `go/gorm` | Go 1.26+ | `go test`（GORM + SQLite） |
+| `go/libsql` | Go 1.26+ | `go test`（公式 libSQL `database/sql`） |
 
 ## マイルストーン
 
@@ -143,6 +145,7 @@ const crud = createCrud(db)
 | **v0.3.0** | Drizzle / Prisma で同等の実装とテストが通ること |
 | **v0.5.0** | `count()` と `SearchResult.total`（#47） |
 | **v0.6.0** | libSQL アダプタ（`@b4moss/crudian/libsql` / `@libsql/client`。#42） |
+| **v0.7.0** | Go モジュール（`go/gorm` SQLite + `go/libsql`。#48） |
 
 ## バージョン方針
 
@@ -167,7 +170,7 @@ const crud = createCrud(db)
 
 まず `@b4moss/crudian/bun-sqlite` の Core（v0.1.0）→ Extended writes（v0.2.0）のあと、他アダプタへ展開する（v0.3.0）。
 
-- 設計と進め方: [`docs/plans/bun-sqlite-adapter.md`](./plans/bun-sqlite-adapter.md) / [`docs/plans/libsql-adapter.md`](./plans/libsql-adapter.md)
+- 設計と進め方: [`docs/plans/bun-sqlite-adapter.md`](./plans/bun-sqlite-adapter.md) / [`docs/plans/libsql-adapter.md`](./plans/libsql-adapter.md) / [`docs/plans/go-module.md`](./plans/go-module.md)
 - ロードマップ: [`docs/plans/roadmap.md`](./plans/roadmap.md)
 - テスト仕様: [`docs/tests/`](./tests/README.md)
 

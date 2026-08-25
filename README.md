@@ -26,6 +26,7 @@ Full usage — **every method with sample code** — lives in [`packages/js/READ
 - Spec: [`docs/main.md`](./docs/main.md)
 - Roadmap: [`docs/plans/roadmap.md`](./docs/plans/roadmap.md)
 - libSQL design: [`docs/plans/libsql-adapter.md`](./docs/plans/libsql-adapter.md)
+- Go design: [`docs/plans/go-module.md`](./docs/plans/go-module.md)
 - Tests: [`docs/tests/`](./docs/tests/)
 
 ## License
