@@ -197,10 +197,10 @@ export function createSyncSqliteCrud<TDb>(
       const tbl = quoteIdent(table)
       const where = compileWhere(resolveWhere(query.where))
       const sql =
-        `SELECT COUNT(*) AS ${quoteIdent("count")} FROM ${tbl}` +
+        `SELECT COUNT(*) AS ${quoteIdent("row_count")} FROM ${tbl}` +
         (where.sql ? ` WHERE ${where.sql}` : "")
       const row = ex.get(sql, where.args)
-      return Number(row?.count ?? 0)
+      return Number(row?.row_count ?? 0)
     },
 
     upsert<T extends Row = Row>(table: string, cols: Record<string, unknown>): T {
