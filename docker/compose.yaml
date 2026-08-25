@@ -1,0 +1,132 @@
+# All-in-one app runtime + real DBs for E2E (issue #44).
+# Unit/integration stay on mocks / in-memory SQLite outside this stack.
+
+name: crudian
+
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NODE_MAJOR: "24"
+        GO_VERSION: "1.26.7"
+    image: crudian-dev:local
+    working_dir: /workspace
+    volumes:
+      - ..:/workspace
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: crudian
+      POSTGRES_PASSWORD: crudian
+      POSTGRES_DB: crudian
+      MYSQL_HOST: mysql
+      MYSQL_PORT: "3306"
+      MYSQL_USER: crudian
+      MYSQL_PASSWORD: crudian
+      MYSQL_DATABASE: crudian
+      MARIADB_HOST: mariadb
+      MARIADB_PORT: "3306"
+      MARIADB_USER: crudian
+      MARIADB_PASSWORD: crudian
+      MARIADB_DATABASE: crudian
+      DATABASE_URL_POSTGRES: postgres://crudian:crudian@postgres:5432/crudian?sslmode=disable
+      DATABASE_URL_MYSQL: mysql://crudian:crudian@mysql:3306/crudian
+      DATABASE_URL_MARIADB: mysql://crudian:crudian@mariadb:3306/crudian
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+      mariadb:
+        condition: service_healthy
+    # Keep process up for interactive / Dev Containers attach
+    command: ["sleep", "infinity"]
+    networks:
+      - crudian
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: crudian
+      POSTGRES_PASSWORD: crudian
+      POSTGRES_DB: crudian
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crudian -d crudian"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - crudian
+
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: crudian
+      MYSQL_PASSWORD: crudian
+      MYSQL_DATABASE: crudian
+    ports:
+      - "3306:3306"
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "127.0.0.1",
+          "-uroot",
+          "-proot",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - crudian
+
+  mariadb:
+    image: mariadb:11.4
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_USER: crudian
+      MARIADB_PASSWORD: crudian
+      MARIADB_DATABASE: crudian
+    ports:
+      - "3307:3306"
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "healthcheck.sh",
+          "--connect",
+          "--innodb_initialized",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    networks:
+      - crudian
+
+networks:
+  crudian:
+
+volumes:
+  postgres_data:
+  mysql_data:
+  mariadb_data:
