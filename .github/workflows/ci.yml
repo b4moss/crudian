@@ -35,6 +35,7 @@ jobs:
     outputs:
       js: ${{ steps.set.outputs.js }}
       go: ${{ steps.set.outputs.go }}
+      gates: ${{ steps.set.outputs.gates }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -50,14 +51,19 @@ jobs:
               - 'packages/go/**'
             workflow:
               - '.github/workflows/ci.yml'
-              - '.github/scripts/ci-skip-if-ancestor-passed.sh'
+              - '.github/scripts/**'
+              - '.github/tests/**'
               - '.github/CI.md'
+              - '.github/act/**'
+              - '.actrc'
+              - 'Makefile'
 
       - name: Resolve outputs
         id: set
         run: |
-          # Workflow / skip-script edits schedule all package jobs; ancestor
-          # skip still short-circuits work when package trees are unchanged.
+          # Workflow / skip-script / gate-test edits schedule package jobs;
+          # ancestor skip still short-circuits when package trees are unchanged.
+          echo "gates=${{ steps.filter.outputs.workflow }}" >> "$GITHUB_OUTPUT"
           if [[ "${{ steps.filter.outputs.workflow }}" == "true" ]]; then
             echo "js=true" >> "$GITHUB_OUTPUT"
             echo "go=true" >> "$GITHUB_OUTPUT"
@@ -65,6 +71,24 @@ jobs:
             echo "js=${{ steps.filter.outputs.js }}" >> "$GITHUB_OUTPUT"
             echo "go=${{ steps.filter.outputs.go }}" >> "$GITHUB_OUTPUT"
           fi
+
+  gate-scripts:
+    name: test gate scripts
+    needs: changes
+    if: needs.changes.outputs.gates == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Run gate script tests
+        run: bash .github/tests/run.sh
 
   lint-js:
     name: lint packages/js
@@ -299,6 +323,7 @@ jobs:
     name: CI result
     needs:
       - changes
+      - gate-scripts
       - lint-js
       - bun-sqlite
       - node-adapters
@@ -311,8 +336,9 @@ jobs:
       - name: Aggregate
         run: |
           set -euo pipefail
-          echo "js=${{ needs.changes.outputs.js }} go=${{ needs.changes.outputs.go }}"
+          echo "js=${{ needs.changes.outputs.js }} go=${{ needs.changes.outputs.go }} gates=${{ needs.changes.outputs.gates }}"
           results=(
+            "${{ needs.gate-scripts.result }}"
             "${{ needs.lint-js.result }}"
             "${{ needs.bun-sqlite.result }}"
             "${{ needs.node-adapters.result }}"
