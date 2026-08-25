@@ -9,6 +9,7 @@ export type {
   WhereInput,
   ReadQuery,
   SearchQuery,
+  CountQuery,
   DeleteQuery,
   UpdateQuery,
   DuplicateQuery,
