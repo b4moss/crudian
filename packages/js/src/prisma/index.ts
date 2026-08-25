@@ -6,6 +6,9 @@ export { createCrud, type PrismaCrud, type PrismaLikeClient } from "./crud.js"
 export type {
   Row,
   SearchResult,
+  OffsetSearchResult,
+  CursorSearchResult,
+  PagingMode,
   WhereInput,
   ReadQuery,
   SearchQuery,
