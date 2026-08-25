@@ -1,10 +1,22 @@
 name: CI
 
+# Policy: .github/CI.md
+# - Lint + unit/integration on PRs (and push)
+# - Only packages touched by the diff (or this workflow) are scheduled
+# - If the same package + ci.yml identity already has a green check-run on an
+#   ancestor/tip commit, the job short-circuits (merge stacks do not re-test)
+# - No product E2E in CI
+
 on:
   pull_request:
     branches:
       - develop
       - "dev-v*"
+  push:
+    branches:
+      - develop
+      - "dev-v*"
+      - main
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -12,10 +24,97 @@ concurrency:
 
 permissions:
   contents: read
+  actions: write
+  checks: read
 
 jobs:
+  changes:
+    name: detect package changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      js: ${{ steps.set.outputs.js }}
+      go: ${{ steps.set.outputs.go }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Path filter
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            js:
+              - 'packages/js/**'
+            go:
+              - 'packages/go/**'
+            workflow:
+              - '.github/workflows/ci.yml'
+              - '.github/scripts/ci-skip-if-ancestor-passed.sh'
+              - '.github/CI.md'
+
+      - name: Resolve outputs
+        id: set
+        run: |
+          # Workflow / skip-script edits schedule all package jobs; ancestor
+          # skip still short-circuits work when package trees are unchanged.
+          if [[ "${{ steps.filter.outputs.workflow }}" == "true" ]]; then
+            echo "js=true" >> "$GITHUB_OUTPUT"
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "js=${{ steps.filter.outputs.js }}" >> "$GITHUB_OUTPUT"
+            echo "go=${{ steps.filter.outputs.go }}" >> "$GITHUB_OUTPUT"
+          fi
+
+  lint-js:
+    name: lint packages/js
+    needs: changes
+    if: needs.changes.outputs.js == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: packages/js
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Skip if ancestor already passed
+        id: skip
+        working-directory: ${{ github.workspace }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/ci-skip-if-ancestor-passed.sh "lint packages/js" packages/js .github/workflows/ci.yml .github/scripts/ci-skip-if-ancestor-passed.sh
+
+      - name: Setup Bun
+        if: steps.skip.outputs.hit != 'true'
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Cache Bun install
+        if: steps.skip.outputs.hit != 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-install-${{ runner.os }}-${{ hashFiles('packages/js/bun.lock') }}
+          restore-keys: |
+            bun-install-${{ runner.os }}-
+
+      - name: Install dependencies
+        if: steps.skip.outputs.hit != 'true'
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck (tsc --noEmit)
+        if: steps.skip.outputs.hit != 'true'
+        run: bunx tsc -p tsconfig.json --noEmit
+
   bun-sqlite:
-    name: packages/js (bun-sqlite)
+    name: test packages/js (bun-sqlite)
+    needs: changes
+    if: needs.changes.outputs.js == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -24,23 +123,47 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Skip if ancestor already passed
+        id: skip
+        working-directory: ${{ github.workspace }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/ci-skip-if-ancestor-passed.sh "test packages/js (bun-sqlite)" packages/js .github/workflows/ci.yml .github/scripts/ci-skip-if-ancestor-passed.sh
 
       - name: Setup Bun
+        if: steps.skip.outputs.hit != 'true'
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
+      - name: Cache Bun install
+        if: steps.skip.outputs.hit != 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-install-${{ runner.os }}-${{ hashFiles('packages/js/bun.lock') }}
+          restore-keys: |
+            bun-install-${{ runner.os }}-
+
       - name: Install dependencies
+        if: steps.skip.outputs.hit != 'true'
         run: bun install --frozen-lockfile
 
       - name: Test bun-sqlite
+        if: steps.skip.outputs.hit != 'true'
         run: bun test src/bun-sqlite
 
       - name: Build
+        if: steps.skip.outputs.hit != 'true'
         run: bun run build
 
   node-adapters:
-    name: packages/js (drizzle / prisma / libsql)
+    name: test packages/js (drizzle / prisma / libsql)
+    needs: changes
+    if: needs.changes.outputs.js == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -49,25 +172,160 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Skip if ancestor already passed
+        id: skip
+        working-directory: ${{ github.workspace }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/ci-skip-if-ancestor-passed.sh "test packages/js (drizzle / prisma / libsql)" packages/js .github/workflows/ci.yml .github/scripts/ci-skip-if-ancestor-passed.sh
 
       - name: Setup Bun
+        if: steps.skip.outputs.hit != 'true'
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
       - name: Setup Node
+        if: steps.skip.outputs.hit != 'true'
         uses: actions/setup-node@v4
         with:
           node-version: "24"
 
+      - name: Cache Bun install
+        if: steps.skip.outputs.hit != 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-install-${{ runner.os }}-${{ hashFiles('packages/js/bun.lock') }}
+          restore-keys: |
+            bun-install-${{ runner.os }}-
+
       - name: Install dependencies
+        if: steps.skip.outputs.hit != 'true'
         run: bun install --frozen-lockfile
 
       - name: Test drizzle
+        if: steps.skip.outputs.hit != 'true'
         run: bun run test:drizzle
 
       - name: Test prisma
+        if: steps.skip.outputs.hit != 'true'
         run: bun run test:prisma
 
       - name: Test libsql
+        if: steps.skip.outputs.hit != 'true'
         run: bun run test:libsql
+
+  lint-go:
+    name: lint packages/go
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: packages/go
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Skip if ancestor already passed
+        id: skip
+        working-directory: ${{ github.workspace }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/ci-skip-if-ancestor-passed.sh "lint packages/go" packages/go .github/workflows/ci.yml .github/scripts/ci-skip-if-ancestor-passed.sh
+
+      - name: Setup Go
+        if: steps.skip.outputs.hit != 'true'
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+          cache-dependency-path: packages/go/go.sum
+
+      - name: gofmt
+        if: steps.skip.outputs.hit != 'true'
+        run: |
+          out="$(gofmt -l .)"
+          if [[ -n "$out" ]]; then
+            echo "gofmt needed on:"
+            echo "$out"
+            exit 1
+          fi
+
+      - name: go vet
+        if: steps.skip.outputs.hit != 'true'
+        run: go vet ./...
+
+  go-module:
+    name: test packages/go (gorm / libsql)
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: packages/go
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Skip if ancestor already passed
+        id: skip
+        working-directory: ${{ github.workspace }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/ci-skip-if-ancestor-passed.sh "test packages/go (gorm / libsql)" packages/go .github/workflows/ci.yml .github/scripts/ci-skip-if-ancestor-passed.sh
+
+      - name: Setup Go
+        if: steps.skip.outputs.hit != 'true'
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+          cache-dependency-path: packages/go/go.sum
+
+      - name: Test
+        if: steps.skip.outputs.hit != 'true'
+        run: go test ./...
+
+  ci-result:
+    name: CI result
+    needs:
+      - changes
+      - lint-js
+      - bun-sqlite
+      - node-adapters
+      - lint-go
+      - go-module
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Aggregate
+        run: |
+          set -euo pipefail
+          echo "js=${{ needs.changes.outputs.js }} go=${{ needs.changes.outputs.go }}"
+          results=(
+            "${{ needs.lint-js.result }}"
+            "${{ needs.bun-sqlite.result }}"
+            "${{ needs.node-adapters.result }}"
+            "${{ needs.lint-go.result }}"
+            "${{ needs.go-module.result }}"
+          )
+          for r in "${results[@]}"; do
+            case "$r" in
+              success|skipped) ;;
+              *)
+                echo "Required job finished as: $r"
+                exit 1
+                ;;
+            esac
+          done
+          echo "All required CI jobs are green (or skipped by path filter)."
