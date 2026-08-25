@@ -1,0 +1,28 @@
+{
+  "name": "crudian",
+  "dockerComposeFile": ["../docker/compose.yaml"],
+  "service": "dev",
+  "workspaceFolder": "/workspace",
+  "shutdownAction": "stopCompose",
+  "postCreateCommand": "check-runtimes",
+  "forwardPorts": [5432, 3306, 3307],
+  "portsAttributes": {
+    "5432": { "label": "Postgres" },
+    "3306": { "label": "MySQL" },
+    "3307": { "label": "MariaDB" }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "golang.go",
+        "Prisma.prisma",
+        "oven.bun-vscode"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  },
+  "remoteUser": "ubuntu"
+}
