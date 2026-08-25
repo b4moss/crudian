@@ -18,6 +18,7 @@
 | **v0.1.0** | Core CRUD Trait | 基本 CRUD + `search`/`list` + 条件ビルダー + `transaction` + 梱包骨格が、インメモリテスト付きで使える |
 | **v0.2.0** | Extended writes | `upsert` / `duplicate` / `bulk*` が同水準で揃い、Bun テンプレに載せられる |
 | **v0.3.0** | Other JS adapters | drizzle / prisma が bun-sqlite と同等 API・テストで通る |
+| **v0.5.0** | count / SearchResult.total | `count()` と `search`/`list` の `total` が bun-sqlite / drizzle / prisma で揃う（#47）。Turso（#42）は別スコープ |
 | **v0.4.0** | Docker / E2E harness | 全ランタイム 1 コンテナ + Postgres / MySQL / MariaDB 上の E2E 基盤（[#44](https://github.com/b4moss/crudian/issues/44)） |
 
 ---
@@ -34,7 +35,7 @@
 | `read` | 1件。未ヒットは `null` | |
 | `update` | 更新し対象行を返す。0件は `null` | |
 | `delete` | 影響件数を返す | |
-| `search` | 正式 API。`{ items, nextCursor, hasMore }` | `nextCursor` は生 `id`。cursor は `id` 昇順 |
+| `search` | 正式 API。`{ items, nextCursor, hasMore }`（v0.5.0 で `total` 追加） | `nextCursor` は生 `id`。cursor は `id` 昇順 |
 | `list` | `search` の別名 | |
 | 条件ビルダー | `eq/ne/lt/gt/lte/gte/in/like/isNull/isNotNull` + ネスト可能な and/or | 木は内部表現 |
 | `transaction` | ヘルパのみ（自動 TX は張らない） | |
@@ -94,23 +95,39 @@ PHP / Go パッケージは本マイルストーンの必須範囲外（契約�
 
 ---
 
+## v0.5.0 — count / SearchResult.total
+
+件数 API を契約に足し、既存アダプタへ展開する（#47）。
+
+| 機能 | 内容 | 備考 |
+|------|------|------|
+| `count` | `CountQuery`（`{ where? }`）→ `number` | where コンパイルは `search` と共用 |
+| `SearchResult.total` | where 全件数を常時付与 | limit / cursor 非依存。オプトインなし |
+| 対象 | bun-sqlite / drizzle / prisma | 共有 sync / async 層で実装 |
+| テスト | [`docs/tests/v0.5.0.md`](../tests/v0.5.0.md) | |
+
+Turso SDK（#42）は同マイルストーンの別 Issue スコープ。
+
+---
+
 ## 機能 × マイルストーン早見
 
-| 機能 | v0.1.0 | v0.2.0 | v0.3.0 |
-|------|:------:|:------:|:------:|
-| 共有契約・ビルダー型 | ✓ | | |
-| `createCrud` / 生 `db` | ✓ | | |
-| `create` / `read` / `update` / `delete` | ✓ | | |
-| `search` / `list` + cursor | ✓ | | |
-| 条件ビルダー（演算子・and/or） | ✓ | | |
-| `transaction` | ✓ | | |
-| `tsc` / `exports` / 誤 import ガード | ✓ | | |
-| Core のインメモリテスト | ✓ | | |
-| `upsert` / `duplicate` | | ✓ | |
-| `bulk*` | | ✓ | |
-| Extended のインメモリテスト | | ✓ | |
-| テンプレ試し食い | | △ | |
-| drizzle / prisma | | | ✓ |
+| 機能 | v0.1.0 | v0.2.0 | v0.3.0 | v0.5.0 |
+|------|:------:|:------:|:------:|:------:|
+| 共有契約・ビルダー型 | ✓ | | | |
+| `createCrud` / 生 `db` | ✓ | | | |
+| `create` / `read` / `update` / `delete` | ✓ | | | |
+| `search` / `list` + cursor | ✓ | | | |
+| 条件ビルダー（演算子・and/or） | ✓ | | | |
+| `transaction` | ✓ | | | |
+| `tsc` / `exports` / 誤 import ガード | ✓ | | | |
+| Core のインメモリテスト | ✓ | | | |
+| `upsert` / `duplicate` | | ✓ | | |
+| `bulk*` | | ✓ | | |
+| Extended のインメモリテスト | | ✓ | | |
+| テンプレ試し食い | | △ | | |
+| drizzle / prisma | | | ✓ | |
+| `count` / `SearchResult.total` | | | | ✓ |
 
 △ = 推奨（必須にするかは未決）
 
@@ -129,6 +146,8 @@ PHP / Go パッケージは本マイルストーンの必須範囲外（契約�
 | | #18 Bun テンプレ試し食い（推奨） |
 | **v0.3.0** | #12 / #13 drizzle |
 | | #14 / #15 prisma |
+| **v0.5.0** | #47 `count` / `SearchResult.total` |
+| | #42 Turso SDK（本ロードマップ上は別スコープ） |
 | **v0.4.0** | #44 Docker / Dev Containers（全ランタイム 1 コンテナ + 実 DB E2E） |
 
 クローズ済み（方針変更により機能 Issue へ内包）: #10 / #11

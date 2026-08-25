@@ -57,6 +57,7 @@ describe("drizzle.createCrud", () => {
       "bulkUpsert",
       "search",
       "list",
+      "count",
       "transaction",
     ] as const) {
       assert.equal(typeof crud[name], "function")
@@ -129,6 +130,26 @@ describe("drizzle.coreCrud", () => {
   })
 })
 
+describe("drizzle.count", () => {
+  test("正常系: 空表 / 全件 / where", () => {
+    const crud = crudFixture()
+    assert.equal(crud.count("items"), 0)
+    crud.create("items", { name: "a", score: 1 })
+    crud.create("items", { name: "b", score: 2 })
+    assert.equal(crud.count("items"), 2)
+    assert.equal(crud.count("items", { where: where().eq("name", "a") }), 1)
+  })
+
+  test("異常系: テーブル名 / in 空", () => {
+    const crud = crudFixture()
+    assert.throws(() => crud.count(1 as never), CrudianError)
+    assert.throws(
+      () => crud.count("items", { where: where().in("name", []) }),
+      CrudianError,
+    )
+  })
+})
+
 describe("drizzle.searchList", () => {
   test("正常系: ページングと list 別名", () => {
     const crud = crudFixture()
@@ -137,11 +158,13 @@ describe("drizzle.searchList", () => {
     assert.equal(page1.items.length, 2)
     assert.equal(page1.hasMore, true)
     assert.equal(page1.nextCursor, 2)
+    assert.equal(page1.total, 5)
     const page2 = crud.search("items", { limit: 2, cursor: page1.nextCursor })
     assert.deepEqual(
       page2.items.map((i) => i.id),
       [3, 4],
     )
+    assert.equal(page2.total, 5)
     const q = { limit: 10, where: where().eq("name", "n0") }
     assert.deepEqual(crud.list("items", q), crud.search("items", q))
   })
