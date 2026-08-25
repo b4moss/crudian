@@ -4,6 +4,7 @@
  * - @b4moss/crudian/bun-sqlite
  * - @b4moss/crudian/drizzle
  * - @b4moss/crudian/prisma
+ * - @b4moss/crudian/libsql
  */
 
 export { CrudianError, assertString } from "./errors.js"

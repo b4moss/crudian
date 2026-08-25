@@ -17,6 +17,7 @@ Adapter peers (install only what you use):
 | `@b4moss/crudian/bun-sqlite` | Bun (`bun:sqlite`) |
 | `@b4moss/crudian/drizzle` | `drizzle-orm`, `better-sqlite3` |
 | `@b4moss/crudian/prisma` | `@prisma/client` |
+| `@b4moss/crudian/libsql` | `@libsql/client` |
 
 ## Usage
 
@@ -68,12 +69,29 @@ await crud.create("items", { name: "alpha", score: 1 })
 
 Prisma methods are async. Raw SQL goes through the injected client.
 
+### libSQL (`@libsql/client`)
+
+```ts
+import { createClient } from "@libsql/client"
+import { createCrud } from "@b4moss/crudian/libsql"
+
+const client = createClient({
+  url: process.env.LIBSQL_URL ?? "file:local.db",
+  authToken: process.env.LIBSQL_AUTH_TOKEN,
+})
+const crud = createCrud(client)
+
+await crud.create("items", { name: "alpha", score: 1 })
+```
+
+Methods are async. URL / auth token belong on the caller-created client (typically from env).
+
 ## API surface
 
-`create` / `read` / `update` / `delete` / `search` / `list` / `upsert` / `duplicate` / `bulkCreate` / `bulkUpdate` / `bulkDelete` / `bulkUpsert` / `transaction`
+`create` / `read` / `update` / `delete` / `search` / `list` / `count` / `upsert` / `duplicate` / `bulkCreate` / `bulkUpdate` / `bulkDelete` / `bulkUpsert` / `transaction`
 
 - `search` is canonical; `list` is an alias
-- Cursor pagination uses `id` ascending; response is `{ items, nextCursor, hasMore }`
+- Cursor pagination uses `id` ascending; response is `{ items, nextCursor, hasMore, total }`
 - Conditions use the `where()` builder (`eq` / `ne` / `lt` / `gt` / `lte` / `gte` / `in` / `like` / `isNull` / `isNotNull`, nestable `and` / `or`)
 
 ## License

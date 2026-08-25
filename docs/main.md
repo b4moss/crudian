@@ -83,7 +83,7 @@ DDD の Repository 層向け CRUD 抽象ライブラリ。
 | 3 | `bulk*` 戻り値 | すべて件数のみ |
 | 4 | ファクトリ名 | `createCrud(db)` |
 
-設計・進め方の詳細: [`docs/plans/bun-sqlite-adapter.md`](./plans/bun-sqlite-adapter.md)
+設計・進め方の詳細: [`docs/plans/bun-sqlite-adapter.md`](./plans/bun-sqlite-adapter.md)。libSQL アダプタは [`docs/plans/libsql-adapter.md`](./plans/libsql-adapter.md)。
 
 ## パッケージ構成
 
@@ -92,7 +92,7 @@ DDD の Repository 層向け CRUD 抽象ライブラリ。
 パッケージ名: **`@b4moss/crudian`**（`packages/js`）
 
 Node.js / Bun など JS エコシステム向け。ディレクトリ名の `js` は広範な呼称であり、実装言語は TypeScript。  
-配布物は `tsc` で生成した `dist`。subpath / `exports` 条件で Bun 向け（`bun-sqlite`）と Node 向け（`drizzle` / `prisma`）を出し分ける。  
+配布物は `tsc` で生成した `dist`。subpath / `exports` 条件で Bun 向け（`bun-sqlite`）と Node / Bun 向け（`drizzle` / `prisma` / `libsql`）を出し分ける。  
 Node から `@b4moss/crudian/bun-sqlite` を読んだ場合は、読み込み時に誤 import を示す明示エラーを出す。
 
 | subpath | 対象 |
@@ -101,6 +101,7 @@ Node から `@b4moss/crudian/bun-sqlite` を読んだ場合は、読み込み時
 | `@b4moss/crudian/bun-sqlite` | Bun `bun:sqlite` |
 | `@b4moss/crudian/drizzle` | Drizzle |
 | `@b4moss/crudian/prisma` | Prisma |
+| `@b4moss/crudian/libsql` | libSQL（`@libsql/client`。Turso Cloud 等のホスト先を含む） |
 
 ```ts
 import { createCrud } from "@b4moss/crudian/bun-sqlite"
@@ -129,6 +130,7 @@ const crud = createCrud(db)
 | `bun-sqlite` | Bun | `bun:test`（`bun test`） |
 | `drizzle` | Node.js 24+ | `node:test`（`node --test`） |
 | `prisma` | Node.js 24+ | `node:test`（`node --test`） |
+| `libsql` | Node.js 24+ / Bun | `node:test`（`node --test`） |
 
 ## マイルストーン
 
@@ -139,7 +141,8 @@ const crud = createCrud(db)
 | **v0.1.0** | Core CRUD Trait（`createCrud` / 基本 CRUD / `search`・`list` / 条件ビルダー / `transaction` / 梱包骨格 + テスト） |
 | **v0.2.0** | Extended writes（`upsert` / `duplicate` / `bulk*` + テスト。Bun テンプレ試し食いは推奨） |
 | **v0.3.0** | Drizzle / Prisma で同等の実装とテストが通ること |
-| **v0.5.0** | `count()` と `SearchResult.total`（#47）。Turso SDK（#42）は同マイルストーンの別スコープ |
+| **v0.5.0** | `count()` と `SearchResult.total`（#47） |
+| **v0.6.0** | libSQL アダプタ（`@b4moss/crudian/libsql` / `@libsql/client`。#42） |
 
 ## バージョン方針
 
@@ -164,7 +167,7 @@ const crud = createCrud(db)
 
 まず `@b4moss/crudian/bun-sqlite` の Core（v0.1.0）→ Extended writes（v0.2.0）のあと、他アダプタへ展開する（v0.3.0）。
 
-- 設計と進め方: [`docs/plans/bun-sqlite-adapter.md`](./plans/bun-sqlite-adapter.md)
+- 設計と進め方: [`docs/plans/bun-sqlite-adapter.md`](./plans/bun-sqlite-adapter.md) / [`docs/plans/libsql-adapter.md`](./plans/libsql-adapter.md)
 - ロードマップ: [`docs/plans/roadmap.md`](./plans/roadmap.md)
 - テスト仕様: [`docs/tests/`](./tests/README.md)
 
