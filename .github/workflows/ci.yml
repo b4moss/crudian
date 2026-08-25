@@ -40,7 +40,7 @@ jobs:
         run: bun run build
 
   node-adapters:
-    name: packages/js (drizzle / prisma)
+    name: packages/js (drizzle / prisma / libsql)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -68,3 +68,6 @@ jobs:
 
       - name: Test prisma
         run: bun run test:prisma
+
+      - name: Test libsql
+        run: bun run test:libsql

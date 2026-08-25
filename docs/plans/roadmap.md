@@ -1,14 +1,14 @@
 # Roadmap — bun:sqlite CRUD Trait
 
 `@b4moss/crudian/bun-sqlite` を参照実装として、機能をマイルストーンに割り当てる。  
-仕様の正は [`docs/main.md`](../main.md)。設計詳細は [`bun-sqlite-adapter.md`](./bun-sqlite-adapter.md)。
+仕様の正は [`docs/main.md`](../main.md)。設計詳細は [`bun-sqlite-adapter.md`](./bun-sqlite-adapter.md)。libSQL は [`libsql-adapter.md`](./libsql-adapter.md)。
 
 ## 方針
 
 - 入口は `createCrud(db)`。単表 CRUD Facade + Adapter
 - **機能単位で実装とインメモリ DB テスト（Bun + `bun:test`）を同時に閉じる**
 - 旧定義の「v0.1 = 全メソッド実装 / v0.2 = テストのみ」は改め、下表の分割に更新する
-- v0.3.0 以降で drizzle / prisma（および将来 PHP / Go）へ同じ語彙を展開する
+- v0.3.0 以降で drizzle / prisma / libsql（および将来 PHP / Go）へ同じ語彙を展開する
 - **バージョンはアダプタ別ではなくモノリポ共通で上げる**（未変更アダプタでも版が飛ぶことがある）。詳細は `docs/main.md` の「バージョン方針」
 
 ## マイルストーン一覧
@@ -18,7 +18,8 @@
 | **v0.1.0** | Core CRUD Trait | 基本 CRUD + `search`/`list` + 条件ビルダー + `transaction` + 梱包骨格が、インメモリテスト付きで使える |
 | **v0.2.0** | Extended writes | `upsert` / `duplicate` / `bulk*` が同水準で揃い、Bun テンプレに載せられる |
 | **v0.3.0** | Other JS adapters | drizzle / prisma が bun-sqlite と同等 API・テストで通る |
-| **v0.5.0** | count / SearchResult.total | `count()` と `search`/`list` の `total` が bun-sqlite / drizzle / prisma で揃う（#47）。Turso（#42）は別スコープ |
+| **v0.5.0** | count / SearchResult.total | `count()` と `search`/`list` の `total` が bun-sqlite / drizzle / prisma で揃う（#47） |
+| **v0.6.0** | libSQL adapter | `@b4moss/crudian/libsql`（`@libsql/client`）が既存契約と同等 API・テストで通る（#42） |
 | **v0.4.0** | Docker / E2E harness | 全ランタイム 1 コンテナ + Postgres / MySQL / MariaDB 上の E2E 基盤（[#44](https://github.com/b4moss/crudian/issues/44)） |
 
 ---
@@ -106,28 +107,50 @@ PHP / Go パッケージは本マイルストーンの必須範囲外（契約�
 | 対象 | bun-sqlite / drizzle / prisma | 共有 sync / async 層で実装 |
 | テスト | [`docs/tests/v0.5.0.md`](../tests/v0.5.0.md) | |
 
-Turso SDK（#42）は同マイルストーンの別 Issue スコープ。
+---
+
+## v0.6.0 — libSQL adapter
+
+既存契約を libSQL クライアント向けアダプタへ展開する（#42）。
+
+| 機能 | 内容 | 備考 |
+|------|------|------|
+| `@b4moss/crudian/libsql` | bun-sqlite / prisma と同等 API（async） | peer: `@libsql/client` |
+| 入口 | `createCrud(client)` | 呼び出し側が作った Client を注入。生 client を `crud.db` で公開 |
+| 実装方針 | `createAsyncSqliteCrud` に薄い executor を渡す | prisma アダプタと同型 |
+| テスト | 一時ファイル DB + `node:test` | [`docs/tests/v0.6.0.md`](../tests/v0.6.0.md)。`:memory:` は TX と相性が悪いためテストではファイルを使う |
+| 設計 | [`libsql-adapter.md`](./libsql-adapter.md) | サブパスは商業名 Turso ではなく libSQL |
+
+**対象外:** `@tursodatabase/serverless`、リモート Cloud 前提の E2E、TypeORM（#43）
+
+### v0.6.0 推奨実装順
+
+1. 仕様・テスト仕様の固定（本マイルストーンの docs）
+2. `packages/js/src/libsql` + `exports` / peer / scripts
+3. CRUD / search / extended writes / count・total のテスト
+4. CI（`test:libsql`）・README 更新 → 版上げ `0.6.0`
 
 ---
 
 ## 機能 × マイルストーン早見
 
-| 機能 | v0.1.0 | v0.2.0 | v0.3.0 | v0.5.0 |
-|------|:------:|:------:|:------:|:------:|
-| 共有契約・ビルダー型 | ✓ | | | |
-| `createCrud` / 生 `db` | ✓ | | | |
-| `create` / `read` / `update` / `delete` | ✓ | | | |
-| `search` / `list` + cursor | ✓ | | | |
-| 条件ビルダー（演算子・and/or） | ✓ | | | |
-| `transaction` | ✓ | | | |
-| `tsc` / `exports` / 誤 import ガード | ✓ | | | |
-| Core のインメモリテスト | ✓ | | | |
-| `upsert` / `duplicate` | | ✓ | | |
-| `bulk*` | | ✓ | | |
-| Extended のインメモリテスト | | ✓ | | |
-| テンプレ試し食い | | △ | | |
-| drizzle / prisma | | | ✓ | |
-| `count` / `SearchResult.total` | | | | ✓ |
+| 機能 | v0.1.0 | v0.2.0 | v0.3.0 | v0.5.0 | v0.6.0 |
+|------|:------:|:------:|:------:|:------:|:------:|
+| 共有契約・ビルダー型 | ✓ | | | | |
+| `createCrud` / 生 `db` | ✓ | | | | |
+| `create` / `read` / `update` / `delete` | ✓ | | | | |
+| `search` / `list` + cursor | ✓ | | | | |
+| 条件ビルダー（演算子・and/or） | ✓ | | | | |
+| `transaction` | ✓ | | | | |
+| `tsc` / `exports` / 誤 import ガード | ✓ | | | | |
+| Core のインメモリテスト | ✓ | | | | |
+| `upsert` / `duplicate` | | ✓ | | | |
+| `bulk*` | | ✓ | | | |
+| Extended のインメモリテスト | | ✓ | | | |
+| テンプレ試し食い | | △ | | | |
+| drizzle / prisma | | | ✓ | | |
+| `count` / `SearchResult.total` | | | | ✓ | |
+| libsql（`@libsql/client`） | | | | | ✓ |
 
 △ = 推奨（必須にするかは未決）
 
@@ -147,7 +170,7 @@ Turso SDK（#42）は同マイルストーンの別 Issue スコープ。
 | **v0.3.0** | #12 / #13 drizzle |
 | | #14 / #15 prisma |
 | **v0.5.0** | #47 `count` / `SearchResult.total` |
-| | #42 Turso SDK（本ロードマップ上は別スコープ） |
+| **v0.6.0** | #42 libSQL アダプタ（`@b4moss/crudian/libsql`） |
 | **v0.4.0** | #44 Docker / Dev Containers（全ランタイム 1 コンテナ + 実 DB E2E） |
 
 クローズ済み（方針変更により機能 Issue へ内包）: #10 / #11
