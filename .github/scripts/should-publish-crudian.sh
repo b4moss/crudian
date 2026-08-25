@@ -3,11 +3,17 @@
 # Outputs GitHub Actions-style keys to GITHUB_OUTPUT when set:
 #   skip=true|false
 #   tag=vX.Y.Z (when not skipped for missing tag)
+#
+# Rules (language-independent SemVer):
+# - Gate on packages/js/package.json version + git tag vX.Y.Z
+# - Never attempt to publish a version that already exists on npm
+#   (Go-only / docs-only release merges must not re-publish 0.6.0, etc.)
+# - If the version is new, still skip when the packed tarball matches the
+#   current npm latest (version-normalized) — no empty bumps
 set -euo pipefail
 
 ROOT="$(git rev-parse --show-toplevel)"
 PKG_DIR="$ROOT/packages/js"
-OUT="${GITHUB_OUTPUT:-/dev/stdout}"
 
 emit() {
   local key="$1"
@@ -45,6 +51,12 @@ fi
 echo "Using tag ${TAG} at ${TAG_COMMIT} (HEAD=${HEAD_COMMIT})."
 emit "tag" "$TAG"
 
+# Critical: npm refuses republish. If this SemVer is already on the registry,
+# skip even when local files differ (e.g. README notes from a Go-only release).
+if npm view "@b4moss/crudian@${PKG_VER}" version >/dev/null 2>&1; then
+  skip "npm already has @b4moss/crudian@${PKG_VER}; skip publish (no republish)."
+fi
+
 PUBLISHED="$(npm view @b4moss/crudian version 2>/dev/null || true)"
 if [[ -z "$PUBLISHED" ]]; then
   echo "@b4moss/crudian is not on npm yet; will publish ${PKG_VER}."
@@ -63,7 +75,7 @@ trap cleanup EXIT
 
 mkdir -p "$TMP/pub" "$TMP/local"
 
-# Pack the currently published version from the registry.
+# Pack the currently published latest from the registry (content-equality guard).
 (
   cd "$TMP"
   npm pack "@b4moss/crudian@${PUBLISHED}" --silent >/dev/null
@@ -97,5 +109,5 @@ if diff -rq "$TMP/pub/package" "$TMP/local/package" >/dev/null; then
   skip "No @b4moss/crudian package content change vs npm@${PUBLISHED} (version-normalized); skip publish."
 fi
 
-echo "Package content differs from npm@${PUBLISHED}; will publish ${PKG_VER}."
+echo "New version ${PKG_VER} with content differing from npm@${PUBLISHED}; will publish."
 emit "skip" "false"
