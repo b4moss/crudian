@@ -1,7 +1,7 @@
 # Roadmap — bun:sqlite CRUD Trait
 
 `@b4moss/crudian/bun-sqlite` を参照実装として、機能をマイルストーンに割り当てる。  
-仕様の正は [`docs/main.md`](../main.md)。設計詳細は [`bun-sqlite-adapter.md`](./bun-sqlite-adapter.md)。libSQL は [`libsql-adapter.md`](./libsql-adapter.md)。
+仕様の正は [`docs/main.md`](../main.md)。設計詳細は [`bun-sqlite-adapter.md`](./bun-sqlite-adapter.md)。libSQL は [`libsql-adapter.md`](./libsql-adapter.md)。Go は [`go-module.md`](./go-module.md)。
 
 ## 方針
 
@@ -9,7 +9,7 @@
 - **機能単位で実装とインメモリ DB テスト（Bun + `bun:test`）を同時に閉じる**
 - 旧定義の「v0.1 = 全メソッド実装 / v0.2 = テストのみ」は改め、下表の分割に更新する
 - v0.3.0 以降で drizzle / prisma / libsql（および将来 PHP / Go）へ同じ語彙を展開する
-- **バージョンはアダプタ別ではなくモノリポ共通で上げる**（未変更アダプタでも版が飛ぶことがある）。詳細は `docs/main.md` の「バージョン方針」
+- **バージョンは言語（配布物）単位**（JS npm と Go module は独立）。同一言語内のアダプタは単一版に同梱。言語間で版が飛ぶのは許容。詳細は `docs/main.md` の「バージョン方針」
 
 ## マイルストーン一覧
 
@@ -20,6 +20,7 @@
 | **v0.3.0** | Other JS adapters | drizzle / prisma が bun-sqlite と同等 API・テストで通る |
 | **v0.5.0** | count / SearchResult.total | `count()` と `search`/`list` の `total` が bun-sqlite / drizzle / prisma で揃う（#47） |
 | **v0.6.0** | libSQL adapter | `@b4moss/crudian/libsql`（`@libsql/client`）が既存契約と同等 API・テストで通る（#42） |
+| **v0.7.0** | Go module | `github.com/b4moss/crudian/go/gorm`（SQLite）と `.../go/libsql` が同等契約で通る（#48） |
 | **v0.4.0** | Docker / E2E harness | 全ランタイム 1 コンテナ + Postgres / MySQL / MariaDB 上の E2E 基盤（[#44](https://github.com/b4moss/crudian/issues/44)） |
 
 ---
@@ -132,25 +133,55 @@ PHP / Go パッケージは本マイルストーンの必須範囲外（契約�
 
 ---
 
+## v0.7.0 — Go module
+
+JS 契約を Go へ移植する（#48）。**Go の公開初版は `0.7.0`**（`packages/go/VERSION`）。npm（`@b4moss/crudian`）は変更がなければ **`0.6.0` のまま**でよい。
+
+| 機能 | 内容 | 備考 |
+|------|------|------|
+| module | `github.com/b4moss/crudian/go` | 単一 go.mod。パッケージ `crudian` / `gorm` / `libsql` |
+| API | 同期 + `context.Context` | JS sync/async 分裂なし |
+| Dialect | 初手から切る | **いまは Sqlite のみ**。MySQL / Postgres は将来（stub） |
+| `go/gorm` | GORM | 生 `*gorm.DB` 注入。**v0.7.0 は SQLite のみ** |
+| `go/libsql` | 公式 libSQL `database/sql` | 第一候補: `libsql-client-go`（SQLite 互換） |
+| 配布 | Go module path + git タグ | タグ **`packages/go/v0.7.0`**。npm 風レジストリへの upload はなし |
+| テスト | [`docs/tests/v0.7.0.md`](../tests/v0.7.0.md) | Go 1.26 + `testing` |
+| CI/CD | [`.github/CI.md`](../../.github/CI.md) | 変更時のみ `packages/go` を lint/test。CD は当該タグ時のみ |
+| 設計 | [`go-module.md`](./go-module.md) | |
+
+**対象外（v0.7.0）:** GORM の MySQL / PostgreSQL（**将来対応**）、可変 PK（#72）、PHP、製品 E2E の CI 実行
+
+### v0.7.0 推奨実装順
+
+1. 仕様・テスト仕様の固定（本マイルストーンの docs）
+2. `crudian` 共有（where / Dialect / CRUD）
+3. `gorm` + SQLite 結合テスト
+4. `libsql` + 結合テスト
+5. CI（path filter + `go test` / lint）・README
+6. 公開: `packages/go/VERSION=0.7.0` に対しタグ `packages/go/v0.7.0`（npm は触らない）
+
+---
+
 ## 機能 × マイルストーン早見
 
-| 機能 | v0.1.0 | v0.2.0 | v0.3.0 | v0.5.0 | v0.6.0 |
-|------|:------:|:------:|:------:|:------:|:------:|
-| 共有契約・ビルダー型 | ✓ | | | | |
-| `createCrud` / 生 `db` | ✓ | | | | |
-| `create` / `read` / `update` / `delete` | ✓ | | | | |
-| `search` / `list` + cursor | ✓ | | | | |
-| 条件ビルダー（演算子・and/or） | ✓ | | | | |
-| `transaction` | ✓ | | | | |
-| `tsc` / `exports` / 誤 import ガード | ✓ | | | | |
-| Core のインメモリテスト | ✓ | | | | |
-| `upsert` / `duplicate` | | ✓ | | | |
-| `bulk*` | | ✓ | | | |
-| Extended のインメモリテスト | | ✓ | | | |
-| テンプレ試し食い | | △ | | | |
-| drizzle / prisma | | | ✓ | | |
-| `count` / `SearchResult.total` | | | | ✓ | |
-| libsql（`@libsql/client`） | | | | | ✓ |
+| 機能 | v0.1.0 | v0.2.0 | v0.3.0 | v0.5.0 | v0.6.0 | v0.7.0 |
+|------|:------:|:------:|:------:|:------:|:------:|:------:|
+| 共有契約・ビルダー型 | ✓ | | | | | |
+| `createCrud` / 生 `db` | ✓ | | | | | |
+| `create` / `read` / `update` / `delete` | ✓ | | | | | |
+| `search` / `list` + cursor | ✓ | | | | | |
+| 条件ビルダー（演算子・and/or） | ✓ | | | | | |
+| `transaction` | ✓ | | | | | |
+| `tsc` / `exports` / 誤 import ガード | ✓ | | | | | |
+| Core のインメモリテスト | ✓ | | | | | |
+| `upsert` / `duplicate` | | ✓ | | | | |
+| `bulk*` | | ✓ | | | | |
+| Extended のインメモリテスト | | ✓ | | | | |
+| テンプレ試し食い | | △ | | | | |
+| drizzle / prisma | | | ✓ | | | |
+| `count` / `SearchResult.total` | | | | ✓ | | |
+| libsql（`@libsql/client`） | | | | | ✓ | |
+| Go gorm（SQLite）/ libsql | | | | | | ✓ |
 
 △ = 推奨（必須にするかは未決）
 
@@ -171,6 +202,7 @@ PHP / Go パッケージは本マイルストーンの必須範囲外（契約�
 | | #14 / #15 prisma |
 | **v0.5.0** | #47 `count` / `SearchResult.total` |
 | **v0.6.0** | #42 libSQL アダプタ（`@b4moss/crudian/libsql`） |
+| **v0.7.0** | #48 Go モジュール化（gorm SQLite / libsql） |
 | **v0.4.0** | #44 Docker / Dev Containers（全ランタイム 1 コンテナ + 実 DB E2E） |
 
 クローズ済み（方針変更により機能 Issue へ内包）: #10 / #11

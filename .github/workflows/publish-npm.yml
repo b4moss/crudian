@@ -1,5 +1,8 @@
 name: Publish npm
 
+# Deploys @b4moss/crudian only when packages/js version/tag/content warrants it.
+# See .github/CI.md
+
 on:
   push:
     branches:
@@ -35,6 +38,14 @@ jobs:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
+      - name: Cache Bun install
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-install-${{ runner.os }}-${{ hashFiles('packages/js/bun.lock') }}
+          restore-keys: |
+            bun-install-${{ runner.os }}-
+
       - name: Install dependencies
         working-directory: packages/js
         run: bun install --frozen-lockfile
@@ -61,6 +72,11 @@ jobs:
         if: steps.decide.outputs.skip != 'true'
         working-directory: packages/js
         run: bun run test:prisma
+
+      - name: Test libsql
+        if: steps.decide.outputs.skip != 'true'
+        working-directory: packages/js
+        run: bun run test:libsql
 
       - name: Publish to npm
         if: steps.decide.outputs.skip != 'true'
