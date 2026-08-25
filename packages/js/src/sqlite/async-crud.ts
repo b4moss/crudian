@@ -177,10 +177,43 @@ export function createAsyncSqliteCrud<TDb>(
       query: SearchQuery = {},
     ): Promise<SearchResult<T>> {
       assertString(table, "table")
+      const paging = query.paging ?? "offset"
+      if (paging !== "offset" && paging !== "cursor") {
+        throw new CrudianError('paging must be "offset" or "cursor"')
+      }
+      if (paging === "offset" && query.cursor != null) {
+        throw new CrudianError("offset paging does not accept cursor")
+      }
+      if (paging === "cursor" && query.offset != null) {
+        throw new CrudianError("cursor paging does not accept offset")
+      }
+
       const limit = query.limit ?? 20
       if (typeof limit !== "number" || !Number.isFinite(limit) || limit <= 0) {
         throw new CrudianError("limit must be a positive number")
       }
+
+      const tbl = quoteIdent(table)
+      const where = compileWhere(resolveWhere(query.where))
+      const total = await crud.count(table, { where: query.where })
+
+      if (paging === "offset") {
+        const offset = query.offset ?? 0
+        if (typeof offset !== "number" || !Number.isFinite(offset) || offset < 0) {
+          throw new CrudianError("offset must be a non-negative number")
+        }
+        const args: unknown[] = [...where.args]
+        const whereSql = where.sql ? ` WHERE ${where.sql}` : ""
+        const sql =
+          `SELECT ${selectColumns(query.columns)} FROM ${tbl}` +
+          whereSql +
+          ` ORDER BY ${quoteIdent("id")} ASC LIMIT ? OFFSET ?`
+        args.push(limit, offset)
+        const items = (await ex.all(sql, args)).map((r) => rowFromObject(r) as T)
+        const hasMore = offset + items.length < total
+        return { items, total, offset, limit, hasMore }
+      }
+
       if (
         query.cursor != null &&
         typeof query.cursor !== "number" &&
@@ -189,8 +222,6 @@ export function createAsyncSqliteCrud<TDb>(
         throw new CrudianError("cursor must be a number, string, or null")
       }
 
-      const tbl = quoteIdent(table)
-      const where = compileWhere(resolveWhere(query.where))
       const args: unknown[] = [...where.args]
       const parts: string[] = []
       if (where.sql) parts.push(`(${where.sql})`)
@@ -214,7 +245,6 @@ export function createAsyncSqliteCrud<TDb>(
           ? last.id
           : null
 
-      const total = await crud.count(table, { where: query.where })
       return { items, nextCursor, hasMore, total }
     },
 
