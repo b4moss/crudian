@@ -1,9 +1,10 @@
 name: CI
 
 # Policy: .github/CI.md
-# - Lint + unit/integration on PRs (and push to seed pass-caches)
-# - Only packages touched by the diff (or this workflow) run
-# - Same content hash that already passed is skipped via GHA cache marker
+# - Lint + unit/integration on PRs (and push)
+# - Only packages touched by the diff (or this workflow) are scheduled
+# - If the same package + ci.yml identity already has a green check-run on an
+#   ancestor/tip commit, the job short-circuits (merge stacks do not re-test)
 # - No product E2E in CI
 
 on:
@@ -24,6 +25,7 @@ concurrency:
 permissions:
   contents: read
   actions: write
+  checks: read
 
 jobs:
   changes:
@@ -48,12 +50,14 @@ jobs:
               - 'packages/go/**'
             workflow:
               - '.github/workflows/ci.yml'
+              - '.github/scripts/ci-skip-if-ancestor-passed.sh'
               - '.github/CI.md'
 
       - name: Resolve outputs
         id: set
         run: |
-          # Workflow edits re-run all package jobs.
+          # Workflow / skip-script edits schedule all package jobs; ancestor
+          # skip still short-circuits work when package trees are unchanged.
           if [[ "${{ steps.filter.outputs.workflow }}" == "true" ]]; then
             echo "js=true" >> "$GITHUB_OUTPUT"
             echo "go=true" >> "$GITHUB_OUTPUT"
@@ -61,8 +65,6 @@ jobs:
             echo "js=${{ steps.filter.outputs.js }}" >> "$GITHUB_OUTPUT"
             echo "go=${{ steps.filter.outputs.go }}" >> "$GITHUB_OUTPUT"
           fi
-          # Push to default integration branches always seeds caches for changed trees;
-          # path filter still limits which jobs run.
 
   lint-js:
     name: lint packages/js
@@ -73,31 +75,27 @@ jobs:
     defaults:
       run:
         working-directory: packages/js
-    env:
-      PASS_MARKER: .ci/lint-js-passed
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Restore pass marker
-        id: pass-cache
-        uses: actions/cache@v4
         with:
-          path: ${{ env.PASS_MARKER }}
-          key: lint-js-${{ hashFiles('packages/js/src/**', 'packages/js/package.json', 'packages/js/tsconfig.json', 'packages/js/bun.lock') }}
+          fetch-depth: 0
 
-      - name: Skip notice
-        if: steps.pass-cache.outputs.cache-hit == 'true'
-        run: echo "lint-js already passed for this content hash; skipping."
+      - name: Skip if ancestor already passed
+        id: skip
+        working-directory: ${{ github.workspace }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/ci-skip-if-ancestor-passed.sh "lint packages/js" packages/js .github/workflows/ci.yml .github/scripts/ci-skip-if-ancestor-passed.sh
 
       - name: Setup Bun
-        if: steps.pass-cache.outputs.cache-hit != 'true'
+        if: steps.skip.outputs.hit != 'true'
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
       - name: Cache Bun install
-        if: steps.pass-cache.outputs.cache-hit != 'true'
+        if: steps.skip.outputs.hit != 'true'
         uses: actions/cache@v4
         with:
           path: ~/.bun/install/cache
@@ -106,20 +104,12 @@ jobs:
             bun-install-${{ runner.os }}-
 
       - name: Install dependencies
-        if: steps.pass-cache.outputs.cache-hit != 'true'
+        if: steps.skip.outputs.hit != 'true'
         run: bun install --frozen-lockfile
 
       - name: Typecheck (tsc --noEmit)
-        if: steps.pass-cache.outputs.cache-hit != 'true'
+        if: steps.skip.outputs.hit != 'true'
         run: bunx tsc -p tsconfig.json --noEmit
-
-      - name: Mark passed
-        if: steps.pass-cache.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p "$(dirname "$PASS_MARKER")"
-          # marker path is repo-root relative for cache
-          mkdir -p "$GITHUB_WORKSPACE/$(dirname "$PASS_MARKER")"
-          date -u +"passed %Y-%m-%dT%H:%M:%SZ" > "$GITHUB_WORKSPACE/$PASS_MARKER"
 
   bun-sqlite:
     name: test packages/js (bun-sqlite)
@@ -130,31 +120,27 @@ jobs:
     defaults:
       run:
         working-directory: packages/js
-    env:
-      PASS_MARKER: .ci/test-js-bun-passed
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Restore pass marker
-        id: pass-cache
-        uses: actions/cache@v4
         with:
-          path: ${{ env.PASS_MARKER }}
-          key: test-js-bun-${{ hashFiles('packages/js/src/**', 'packages/js/package.json', 'packages/js/tsconfig.json', 'packages/js/bun.lock') }}
+          fetch-depth: 0
 
-      - name: Skip notice
-        if: steps.pass-cache.outputs.cache-hit == 'true'
-        run: echo "bun-sqlite tests already passed for this content hash; skipping."
+      - name: Skip if ancestor already passed
+        id: skip
+        working-directory: ${{ github.workspace }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/ci-skip-if-ancestor-passed.sh "test packages/js (bun-sqlite)" packages/js .github/workflows/ci.yml .github/scripts/ci-skip-if-ancestor-passed.sh
 
       - name: Setup Bun
-        if: steps.pass-cache.outputs.cache-hit != 'true'
+        if: steps.skip.outputs.hit != 'true'
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
       - name: Cache Bun install
-        if: steps.pass-cache.outputs.cache-hit != 'true'
+        if: steps.skip.outputs.hit != 'true'
         uses: actions/cache@v4
         with:
           path: ~/.bun/install/cache
@@ -163,22 +149,16 @@ jobs:
             bun-install-${{ runner.os }}-
 
       - name: Install dependencies
-        if: steps.pass-cache.outputs.cache-hit != 'true'
+        if: steps.skip.outputs.hit != 'true'
         run: bun install --frozen-lockfile
 
       - name: Test bun-sqlite
-        if: steps.pass-cache.outputs.cache-hit != 'true'
+        if: steps.skip.outputs.hit != 'true'
         run: bun test src/bun-sqlite
 
       - name: Build
-        if: steps.pass-cache.outputs.cache-hit != 'true'
+        if: steps.skip.outputs.hit != 'true'
         run: bun run build
-
-      - name: Mark passed
-        if: steps.pass-cache.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p "$GITHUB_WORKSPACE/$(dirname "$PASS_MARKER")"
-          date -u +"passed %Y-%m-%dT%H:%M:%SZ" > "$GITHUB_WORKSPACE/$PASS_MARKER"
 
   node-adapters:
     name: test packages/js (drizzle / prisma / libsql)
@@ -189,37 +169,33 @@ jobs:
     defaults:
       run:
         working-directory: packages/js
-    env:
-      PASS_MARKER: .ci/test-js-node-passed
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Restore pass marker
-        id: pass-cache
-        uses: actions/cache@v4
         with:
-          path: ${{ env.PASS_MARKER }}
-          key: test-js-node-${{ hashFiles('packages/js/src/**', 'packages/js/package.json', 'packages/js/tsconfig.json', 'packages/js/bun.lock', 'packages/js/prisma/**') }}
+          fetch-depth: 0
 
-      - name: Skip notice
-        if: steps.pass-cache.outputs.cache-hit == 'true'
-        run: echo "node adapter tests already passed for this content hash; skipping."
+      - name: Skip if ancestor already passed
+        id: skip
+        working-directory: ${{ github.workspace }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/ci-skip-if-ancestor-passed.sh "test packages/js (drizzle / prisma / libsql)" packages/js .github/workflows/ci.yml .github/scripts/ci-skip-if-ancestor-passed.sh
 
       - name: Setup Bun
-        if: steps.pass-cache.outputs.cache-hit != 'true'
+        if: steps.skip.outputs.hit != 'true'
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
       - name: Setup Node
-        if: steps.pass-cache.outputs.cache-hit != 'true'
+        if: steps.skip.outputs.hit != 'true'
         uses: actions/setup-node@v4
         with:
           node-version: "24"
 
       - name: Cache Bun install
-        if: steps.pass-cache.outputs.cache-hit != 'true'
+        if: steps.skip.outputs.hit != 'true'
         uses: actions/cache@v4
         with:
           path: ~/.bun/install/cache
@@ -228,26 +204,20 @@ jobs:
             bun-install-${{ runner.os }}-
 
       - name: Install dependencies
-        if: steps.pass-cache.outputs.cache-hit != 'true'
+        if: steps.skip.outputs.hit != 'true'
         run: bun install --frozen-lockfile
 
       - name: Test drizzle
-        if: steps.pass-cache.outputs.cache-hit != 'true'
+        if: steps.skip.outputs.hit != 'true'
         run: bun run test:drizzle
 
       - name: Test prisma
-        if: steps.pass-cache.outputs.cache-hit != 'true'
+        if: steps.skip.outputs.hit != 'true'
         run: bun run test:prisma
 
       - name: Test libsql
-        if: steps.pass-cache.outputs.cache-hit != 'true'
+        if: steps.skip.outputs.hit != 'true'
         run: bun run test:libsql
-
-      - name: Mark passed
-        if: steps.pass-cache.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p "$GITHUB_WORKSPACE/$(dirname "$PASS_MARKER")"
-          date -u +"passed %Y-%m-%dT%H:%M:%SZ" > "$GITHUB_WORKSPACE/$PASS_MARKER"
 
   lint-go:
     name: lint packages/go
@@ -258,32 +228,28 @@ jobs:
     defaults:
       run:
         working-directory: packages/go
-    env:
-      PASS_MARKER: .ci/lint-go-passed
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Restore pass marker
-        id: pass-cache
-        uses: actions/cache@v4
         with:
-          path: ${{ env.PASS_MARKER }}
-          key: lint-go-${{ hashFiles('packages/go/**/*.go', 'packages/go/go.mod', 'packages/go/go.sum') }}
+          fetch-depth: 0
 
-      - name: Skip notice
-        if: steps.pass-cache.outputs.cache-hit == 'true'
-        run: echo "lint-go already passed for this content hash; skipping."
+      - name: Skip if ancestor already passed
+        id: skip
+        working-directory: ${{ github.workspace }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/ci-skip-if-ancestor-passed.sh "lint packages/go" packages/go .github/workflows/ci.yml .github/scripts/ci-skip-if-ancestor-passed.sh
 
       - name: Setup Go
-        if: steps.pass-cache.outputs.cache-hit != 'true'
+        if: steps.skip.outputs.hit != 'true'
         uses: actions/setup-go@v5
         with:
           go-version: "1.26.x"
           cache-dependency-path: packages/go/go.sum
 
       - name: gofmt
-        if: steps.pass-cache.outputs.cache-hit != 'true'
+        if: steps.skip.outputs.hit != 'true'
         run: |
           out="$(gofmt -l .)"
           if [[ -n "$out" ]]; then
@@ -293,14 +259,8 @@ jobs:
           fi
 
       - name: go vet
-        if: steps.pass-cache.outputs.cache-hit != 'true'
+        if: steps.skip.outputs.hit != 'true'
         run: go vet ./...
-
-      - name: Mark passed
-        if: steps.pass-cache.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p "$GITHUB_WORKSPACE/$(dirname "$PASS_MARKER")"
-          date -u +"passed %Y-%m-%dT%H:%M:%SZ" > "$GITHUB_WORKSPACE/$PASS_MARKER"
 
   go-module:
     name: test packages/go (gorm / libsql)
@@ -311,39 +271,29 @@ jobs:
     defaults:
       run:
         working-directory: packages/go
-    env:
-      PASS_MARKER: .ci/test-go-passed
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Restore pass marker
-        id: pass-cache
-        uses: actions/cache@v4
         with:
-          path: ${{ env.PASS_MARKER }}
-          key: test-go-${{ hashFiles('packages/go/**/*.go', 'packages/go/go.mod', 'packages/go/go.sum') }}
+          fetch-depth: 0
 
-      - name: Skip notice
-        if: steps.pass-cache.outputs.cache-hit == 'true'
-        run: echo "go tests already passed for this content hash; skipping."
+      - name: Skip if ancestor already passed
+        id: skip
+        working-directory: ${{ github.workspace }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/ci-skip-if-ancestor-passed.sh "test packages/go (gorm / libsql)" packages/go .github/workflows/ci.yml .github/scripts/ci-skip-if-ancestor-passed.sh
 
       - name: Setup Go
-        if: steps.pass-cache.outputs.cache-hit != 'true'
+        if: steps.skip.outputs.hit != 'true'
         uses: actions/setup-go@v5
         with:
           go-version: "1.26.x"
           cache-dependency-path: packages/go/go.sum
 
       - name: Test
-        if: steps.pass-cache.outputs.cache-hit != 'true'
+        if: steps.skip.outputs.hit != 'true'
         run: go test ./...
-
-      - name: Mark passed
-        if: steps.pass-cache.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p "$GITHUB_WORKSPACE/$(dirname "$PASS_MARKER")"
-          date -u +"passed %Y-%m-%dT%H:%M:%SZ" > "$GITHUB_WORKSPACE/$PASS_MARKER"
 
   ci-result:
     name: CI result
