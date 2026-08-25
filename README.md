@@ -21,6 +21,22 @@ Adapters (subpaths):
 
 Full usage — **every method with sample code** — lives in [`packages/js/README.md`](./packages/js/README.md).
 
+## Go
+
+Go module: **[github.com/b4moss/crudian/go](./packages/go)** (`packages/go`)
+
+```bash
+go get github.com/b4moss/crudian/go@latest
+```
+
+| Import path | Backend |
+|-------------|---------|
+| `.../go/gorm` | GORM + SQLite |
+| `.../go/libsql` | libSQL (`database/sql`) |
+| `.../go/crudian` | Shared contract / Where / Dialect |
+
+See [`packages/go/README.md`](./packages/go/README.md).
+
 ## Docs
 
 - Spec: [`docs/main.md`](./docs/main.md)
