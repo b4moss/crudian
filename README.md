@@ -56,7 +56,8 @@ Usage, drivers, and API notes: [`packages/go/README.md`](./packages/go/README.md
 | [`docs/plans/go-module.md`](./docs/plans/go-module.md) | Go design |
 | [`docs/plans/libsql-adapter.md`](./docs/plans/libsql-adapter.md) | JS libSQL design |
 | [`docs/tests/`](./docs/tests/) | Acceptance tests |
-| [`.github/CI.md`](./.github/CI.md) | CI/CD policy (path-filtered tests, CD per language) |
+| [`.github/CI.md`](./.github/CI.md) | CI/CD policy (path-filtered tests, CD per language, gate tests + act smoke) |
+| [`.github/tests/`](./.github/tests/) | Automated tests for publish/skip gate scripts (`make gate-tests`) |
 
 ## License
 
