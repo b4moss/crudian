@@ -2,13 +2,23 @@ import type { WhereBuilder, WhereNode } from "./where.js"
 
 export type Row = Record<string, unknown>
 
-export type SearchResult<T = Row> = {
+export type OffsetSearchResult<T = Row> = {
+  items: T[]
+  total: number
+  offset: number
+  limit: number
+  hasMore: boolean
+}
+
+export type CursorSearchResult<T = Row> = {
   items: T[]
   nextCursor: number | string | null
   hasMore: boolean
   /** Rows matching `where` (ignores limit/cursor). */
   total: number
 }
+
+export type SearchResult<T = Row> = OffsetSearchResult<T> | CursorSearchResult<T>
 
 export type WhereInput = WhereBuilder | WhereNode
 
@@ -21,7 +31,11 @@ export type SearchQuery = {
   columns?: string[]
   where?: WhereInput
   limit?: number
-  /** Raw `id` cursor (keyset). */
+  /** Pagination mode. Default: `"offset"`. */
+  paging?: "offset" | "cursor"
+  /** Offset for `paging: "offset"` (default `0`). */
+  offset?: number
+  /** Raw `id` cursor (keyset) for `paging: "cursor"`. */
   cursor?: number | string | null
 }
 
