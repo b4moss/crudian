@@ -166,6 +166,14 @@ describe("drizzle.searchList", () => {
       offset2.items.map((i) => i.id),
       [3, 4],
     )
+    const pastEnd = crud.search("items", { limit: 2, offset: 10 })
+    assert.deepEqual(pastEnd.items, [])
+    assert.equal(pastEnd.hasMore, false)
+    assert.equal(pastEnd.total, 5)
+    assert.equal("offset" in pastEnd && pastEnd.offset, 10)
+    assert.equal("nextCursor" in pastEnd, false)
+    const explicit = crud.search("items", { paging: "offset", limit: 2 })
+    assert.deepEqual(explicit, offset1)
 
     const page1 = crud.search("items", { paging: "cursor", limit: 2 })
     assert.equal(page1.items.length, 2)
@@ -204,7 +212,7 @@ describe("drizzle.searchList", () => {
     assert.equal(crud.search("items", { where: where().isNull("note") }).items.length, 1)
   })
 
-  test("異常系: limit / in 空 / 相反入力", () => {
+  test("異常系: limit / in 空 / 相反入力 / 不正 offset", () => {
     const crud = crudFixture()
     assert.throws(() => crud.search("items", { limit: 0 }), CrudianError)
     assert.throws(
@@ -216,6 +224,8 @@ describe("drizzle.searchList", () => {
       () => crud.search("items", { paging: "cursor", offset: 0 }),
       CrudianError,
     )
+    assert.throws(() => crud.search("items", { offset: -1 }), CrudianError)
+    assert.throws(() => crud.search("items", { offset: Number.NaN }), CrudianError)
   })
 })
 
