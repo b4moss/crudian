@@ -182,6 +182,17 @@ export function createAsyncSqliteCrud<TDb>(
       if (typeof limit !== "number" || !Number.isFinite(limit) || limit <= 0) {
         throw new CrudianError("limit must be a positive number")
       }
+
+      const paging = query.paging ?? "offset"
+      if (paging !== "offset" && paging !== "cursor") {
+        throw new CrudianError('paging must be "offset" or "cursor"')
+      }
+      if (paging === "offset" && query.cursor !== undefined) {
+        throw new CrudianError("offset paging does not accept cursor")
+      }
+      if (paging === "cursor" && query.offset !== undefined) {
+        throw new CrudianError("cursor paging does not accept offset")
+      }
       if (
         query.cursor != null &&
         typeof query.cursor !== "number" &&
@@ -192,6 +203,30 @@ export function createAsyncSqliteCrud<TDb>(
 
       const tbl = quoteIdent(table)
       const where = compileWhere(resolveWhere(query.where))
+      const total = await crud.count(table, { where: query.where })
+
+      if (paging === "offset") {
+        const offset = query.offset ?? 0
+        if (typeof offset !== "number" || !Number.isFinite(offset) || offset < 0) {
+          throw new CrudianError("offset must be a non-negative number")
+        }
+        const args: unknown[] = [...where.args]
+        const whereSql = where.sql ? ` WHERE ${where.sql}` : ""
+        const sql =
+          `SELECT ${selectColumns(query.columns)} FROM ${tbl}` +
+          whereSql +
+          ` ORDER BY ${quoteIdent("id")} ASC LIMIT ? OFFSET ?`
+        args.push(limit, offset)
+        const items = (await ex.all(sql, args)).map((r) => rowFromObject(r) as T)
+        return {
+          items,
+          total,
+          offset,
+          limit,
+          hasMore: offset + items.length < total,
+        }
+      }
+
       const args: unknown[] = [...where.args]
       const parts: string[] = []
       if (where.sql) parts.push(`(${where.sql})`)
@@ -215,7 +250,6 @@ export function createAsyncSqliteCrud<TDb>(
           ? last.id
           : null
 
-      const total = await crud.count(table, { where: query.where })
       return { items, nextCursor, hasMore, total }
     },
 
