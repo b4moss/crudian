@@ -318,6 +318,32 @@ describe("search / list", () => {
     expect("nextCursor" in result).toBe(false)
   })
 
+  test('正常系: paging "offset" 明示は未指定と同じ形', () => {
+    const crud = crudFixture()
+    crud.create("items", { name: "a", score: 1 })
+    const implied = crud.search("items", { limit: 10 })
+    const explicit = crud.search("items", { paging: "offset", limit: 10 })
+    expect(explicit).toEqual(implied)
+    expect(explicit).toMatchObject({ offset: 0, limit: 10, hasMore: false, total: 1 })
+    expect("nextCursor" in explicit).toBe(false)
+  })
+
+  test("正常系: offset >= total は空ページ", () => {
+    const crud = crudFixture()
+    for (let i = 0; i < 5; i++) {
+      crud.create("items", { name: `n${i}`, score: i })
+    }
+    const result = crud.search("items", { limit: 2, offset: 10 })
+    expect(result.items).toEqual([])
+    expect(result).toMatchObject({
+      offset: 10,
+      limit: 2,
+      hasMore: false,
+      total: 5,
+    })
+    expect("nextCursor" in result).toBe(false)
+  })
+
   test("正常系: offset ページングで続きが取れる", () => {
     const crud = crudFixture()
     for (let i = 0; i < 5; i++) {
@@ -440,7 +466,7 @@ describe("search / list", () => {
     expect(() => crud.search("items", { limit: -1 })).toThrow(CrudianError)
   })
 
-  test("異常系: 相反入力 / 不正 paging / 負 offset は拒否", () => {
+  test("異常系: 相反入力 / 不正 paging / 負・非有限 offset は拒否", () => {
     const crud = crudFixture()
     expect(() => crud.search("items", { cursor: 1 })).toThrow(CrudianError)
     expect(() =>
@@ -453,6 +479,10 @@ describe("search / list", () => {
       crud.search("items", { paging: "bogus" as "offset" }),
     ).toThrow(CrudianError)
     expect(() => crud.search("items", { offset: -1 })).toThrow(CrudianError)
+    expect(() => crud.search("items", { offset: Number.NaN })).toThrow(CrudianError)
+    expect(() => crud.search("items", { offset: Number.POSITIVE_INFINITY })).toThrow(
+      CrudianError,
+    )
   })
 })
 
