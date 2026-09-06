@@ -19,6 +19,8 @@ export {
 } from "./where.js"
 export type {
   Row,
+  OffsetSearchResult,
+  CursorSearchResult,
   SearchResult,
   WhereInput,
   ReadQuery,
