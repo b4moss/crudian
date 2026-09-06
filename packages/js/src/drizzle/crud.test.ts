@@ -151,20 +151,46 @@ describe("drizzle.count", () => {
 })
 
 describe("drizzle.searchList", () => {
-  test("正常系: ページングと list 別名", () => {
+  test("正常系: offset デフォルトと cursor 明示 / list 別名", () => {
     const crud = crudFixture()
     for (let i = 0; i < 5; i++) crud.create("items", { name: `n${i}`, score: i })
-    const page1 = crud.search("items", { limit: 2 })
+
+    const offset1 = crud.search("items", { limit: 2 })
+    assert.equal(offset1.items.length, 2)
+    assert.equal(offset1.hasMore, true)
+    assert.equal(offset1.total, 5)
+    assert.equal("offset" in offset1 && offset1.offset, 0)
+    assert.equal("nextCursor" in offset1, false)
+    const offset2 = crud.search("items", { limit: 2, offset: 2 })
+    assert.deepEqual(
+      offset2.items.map((i) => i.id),
+      [3, 4],
+    )
+    const pastEnd = crud.search("items", { limit: 2, offset: 10 })
+    assert.deepEqual(pastEnd.items, [])
+    assert.equal(pastEnd.hasMore, false)
+    assert.equal(pastEnd.total, 5)
+    assert.equal("offset" in pastEnd && pastEnd.offset, 10)
+    assert.equal("nextCursor" in pastEnd, false)
+    const explicit = crud.search("items", { paging: "offset", limit: 2 })
+    assert.deepEqual(explicit, offset1)
+
+    const page1 = crud.search("items", { paging: "cursor", limit: 2 })
     assert.equal(page1.items.length, 2)
     assert.equal(page1.hasMore, true)
-    assert.equal(page1.nextCursor, 2)
+    assert.equal("nextCursor" in page1 && page1.nextCursor, 2)
     assert.equal(page1.total, 5)
-    const page2 = crud.search("items", { limit: 2, cursor: page1.nextCursor })
+    const page2 = crud.search("items", {
+      paging: "cursor",
+      limit: 2,
+      cursor: "nextCursor" in page1 ? page1.nextCursor : null,
+    })
     assert.deepEqual(
       page2.items.map((i) => i.id),
       [3, 4],
     )
     assert.equal(page2.total, 5)
+
     const q = { limit: 10, where: where().eq("name", "n0") }
     assert.deepEqual(crud.list("items", q), crud.search("items", q))
   })
@@ -186,13 +212,20 @@ describe("drizzle.searchList", () => {
     assert.equal(crud.search("items", { where: where().isNull("note") }).items.length, 1)
   })
 
-  test("異常系: limit / in 空", () => {
+  test("異常系: limit / in 空 / 相反入力 / 不正 offset", () => {
     const crud = crudFixture()
     assert.throws(() => crud.search("items", { limit: 0 }), CrudianError)
     assert.throws(
       () => crud.search("items", { where: where().in("name", []) }),
       CrudianError,
     )
+    assert.throws(() => crud.search("items", { cursor: 1 }), CrudianError)
+    assert.throws(
+      () => crud.search("items", { paging: "cursor", offset: 0 }),
+      CrudianError,
+    )
+    assert.throws(() => crud.search("items", { offset: -1 }), CrudianError)
+    assert.throws(() => crud.search("items", { offset: Number.NaN }), CrudianError)
   })
 })
 

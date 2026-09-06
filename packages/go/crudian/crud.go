@@ -7,16 +7,45 @@ import (
 
 // Crud is the table-oriented facade (JS createCrud equivalent).
 type Crud struct {
-	ex Executor
-	d  Dialect
+	ex   Executor
+	d    Dialect
+	pk   string
+	pkOK map[string]struct{}
 }
 
 // NewCrud wires an executor and dialect.
-func NewCrud(ex Executor, d Dialect) *Crud {
+func NewCrud(ex Executor, d Dialect, opts ...Options) *Crud {
 	if d == nil {
 		d = SqliteDialect{}
 	}
-	return &Crud{ex: ex, d: d}
+	return &Crud{
+		ex:   ex,
+		d:    d,
+		pk:   resolvePK(opts),
+		pkOK: map[string]struct{}{},
+	}
+}
+
+func (c *Crud) ensurePKColumn(ctx context.Context, table string) error {
+	if _, ok := c.pkOK[table]; ok {
+		return nil
+	}
+	rows, err := c.ex.All(ctx, "PRAGMA table_info("+c.d.QuoteIdent(table)+")")
+	if err != nil {
+		return err
+	}
+	found := false
+	for _, row := range rows {
+		if name, ok := row["name"]; ok && name == c.pk {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return NewError("pk column \"" + c.pk + "\" does not exist on table \"" + table + "\"")
+	}
+	c.pkOK[table] = struct{}{}
+	return nil
 }
 
 func (c *Crud) requireWhere(w *WhereBuilder, label string) error {
@@ -29,6 +58,9 @@ func (c *Crud) requireWhere(w *WhereBuilder, label string) error {
 func (c *Crud) Create(ctx context.Context, table string, cols Row) (Row, error) {
 	tbl, err := AssertString(table, "table")
 	if err != nil {
+		return nil, err
+	}
+	if err := c.ensurePKColumn(ctx, tbl); err != nil {
 		return nil, err
 	}
 	if cols == nil || len(cols) == 0 {
@@ -63,6 +95,9 @@ func (c *Crud) Read(ctx context.Context, table string, query ReadQuery) (Row, er
 	if err != nil {
 		return nil, err
 	}
+	if err := c.ensurePKColumn(ctx, tbl); err != nil {
+		return nil, err
+	}
 	where, err := compileWhere(c.d, resolveWhere(query.Where))
 	if err != nil {
 		return nil, err
@@ -78,6 +113,9 @@ func (c *Crud) Read(ctx context.Context, table string, query ReadQuery) (Row, er
 func (c *Crud) Update(ctx context.Context, table string, cols Row, query UpdateQuery) (Row, error) {
 	tbl, err := AssertString(table, "table")
 	if err != nil {
+		return nil, err
+	}
+	if err := c.ensurePKColumn(ctx, tbl); err != nil {
 		return nil, err
 	}
 	if err := c.requireWhere(query.Where, "update"); err != nil {
@@ -117,6 +155,9 @@ func (c *Crud) Delete(ctx context.Context, table string, query DeleteQuery) (int
 	if err != nil {
 		return 0, err
 	}
+	if err := c.ensurePKColumn(ctx, tbl); err != nil {
+		return 0, err
+	}
 	if err := c.requireWhere(query.Where, "delete"); err != nil {
 		return 0, err
 	}
@@ -133,6 +174,9 @@ func (c *Crud) Delete(ctx context.Context, table string, query DeleteQuery) (int
 func (c *Crud) Count(ctx context.Context, table string, query CountQuery) (int64, error) {
 	tbl, err := AssertString(table, "table")
 	if err != nil {
+		return 0, err
+	}
+	if err := c.ensurePKColumn(ctx, tbl); err != nil {
 		return 0, err
 	}
 	where, err := compileWhere(c.d, resolveWhere(query.Where))
@@ -158,12 +202,29 @@ func (c *Crud) Search(ctx context.Context, table string, query SearchQuery) (Sea
 	if err != nil {
 		return SearchResult{}, err
 	}
+	if err := c.ensurePKColumn(ctx, tbl); err != nil {
+		return SearchResult{}, err
+	}
 	limit := query.Limit
 	if limit == 0 {
 		limit = 20
 	}
 	if limit <= 0 {
 		return SearchResult{}, NewError("limit must be a positive number")
+	}
+
+	paging := query.Paging
+	if paging == "" {
+		paging = "offset"
+	}
+	if paging != "offset" && paging != "cursor" {
+		return SearchResult{}, NewError("paging must be \"offset\" or \"cursor\"")
+	}
+	if paging == "offset" && query.Cursor != nil {
+		return SearchResult{}, NewError("offset paging does not accept cursor")
+	}
+	if paging == "cursor" && query.Offset != nil {
+		return SearchResult{}, NewError("cursor paging does not accept offset")
 	}
 	if query.Cursor != nil {
 		switch query.Cursor.(type) {
@@ -172,17 +233,53 @@ func (c *Crud) Search(ctx context.Context, table string, query SearchQuery) (Sea
 			return SearchResult{}, NewError("cursor must be a number, string, or null")
 		}
 	}
+
 	where, err := compileWhere(c.d, resolveWhere(query.Where))
 	if err != nil {
 		return SearchResult{}, err
 	}
+	total, err := c.Count(ctx, table, CountQuery{Where: query.Where})
+	if err != nil {
+		return SearchResult{}, err
+	}
+
+	if paging == "offset" {
+		offset := 0
+		if query.Offset != nil {
+			offset = *query.Offset
+		}
+		if offset < 0 {
+			return SearchResult{}, NewError("offset must be a non-negative number")
+		}
+		args := append([]any{}, where.Args...)
+		whereSQL := ""
+		if where.SQL != "" {
+			whereSQL = " WHERE " + where.SQL
+		}
+		sql := "SELECT " + selectColumns(c.d, query.Columns) + " FROM " + c.d.QuoteIdent(tbl) +
+			whereSQL + " ORDER BY " + c.d.QuoteIdent(c.pk) + " ASC LIMIT " + c.d.Placeholder(len(args)+1) +
+			" OFFSET " + c.d.Placeholder(len(args)+2)
+		args = append(args, limit, offset)
+		rows, err := c.ex.All(ctx, sql, args...)
+		if err != nil {
+			return SearchResult{}, err
+		}
+		return SearchResult{
+			Items:   rows,
+			HasMore: int64(offset)+int64(len(rows)) < total,
+			Total:   total,
+			Offset:  offset,
+			Limit:   limit,
+		}, nil
+	}
+
 	args := append([]any{}, where.Args...)
 	parts := make([]string, 0, 2)
 	if where.SQL != "" {
 		parts = append(parts, "("+where.SQL+")")
 	}
 	if query.Cursor != nil {
-		parts = append(parts, c.d.QuoteIdent("id")+" > "+c.d.Placeholder(len(args)+1))
+		parts = append(parts, c.d.QuoteIdent(c.pk)+" > "+c.d.Placeholder(len(args)+1))
 		args = append(args, query.Cursor)
 	}
 	whereSQL := ""
@@ -193,7 +290,7 @@ func (c *Crud) Search(ctx context.Context, table string, query SearchQuery) (Sea
 		}
 	}
 	sql := "SELECT " + selectColumns(c.d, query.Columns) + " FROM " + c.d.QuoteIdent(tbl) +
-		whereSQL + " ORDER BY " + c.d.QuoteIdent("id") + " ASC LIMIT " + c.d.Placeholder(len(args)+1)
+		whereSQL + " ORDER BY " + c.d.QuoteIdent(c.pk) + " ASC LIMIT " + c.d.Placeholder(len(args)+1)
 	args = append(args, limit+1)
 	rows, err := c.ex.All(ctx, sql, args...)
 	if err != nil {
@@ -206,13 +303,9 @@ func (c *Crud) Search(ctx context.Context, table string, query SearchQuery) (Sea
 	}
 	var next any
 	if hasMore && len(items) > 0 {
-		if id, ok := items[len(items)-1]["id"]; ok {
+		if id, ok := items[len(items)-1][c.pk]; ok {
 			next = id
 		}
-	}
-	total, err := c.Count(ctx, table, CountQuery{Where: query.Where})
-	if err != nil {
-		return SearchResult{}, err
 	}
 	return SearchResult{Items: items, NextCursor: next, HasMore: hasMore, Total: total}, nil
 }
@@ -226,21 +319,24 @@ func (c *Crud) Upsert(ctx context.Context, table string, cols Row) (Row, error) 
 	if err != nil {
 		return nil, err
 	}
+	if err := c.ensurePKColumn(ctx, tbl); err != nil {
+		return nil, err
+	}
 	if cols == nil || len(cols) == 0 {
 		return nil, NewError("cols must not be empty")
 	}
-	id, ok := cols["id"]
+	id, ok := cols[c.pk]
 	if !ok {
-		return nil, NewError("upsert requires cols.id")
+		return nil, NewError("upsert requires cols." + c.pk)
 	}
-	existing, err := c.Read(ctx, tbl, ReadQuery{Where: Where().Eq("id", id)})
+	existing, err := c.Read(ctx, tbl, ReadQuery{Where: Where().Eq(c.pk, id)})
 	if err != nil {
 		return nil, err
 	}
 	if existing != nil {
 		patch := Row{}
 		for k, v := range cols {
-			if k == "id" {
+			if k == c.pk {
 				continue
 			}
 			patch[k] = v
@@ -248,7 +344,7 @@ func (c *Crud) Upsert(ctx context.Context, table string, cols Row) (Row, error) 
 		if len(patch) == 0 {
 			return existing, nil
 		}
-		updated, err := c.Update(ctx, tbl, patch, UpdateQuery{Where: Where().Eq("id", id)})
+		updated, err := c.Update(ctx, tbl, patch, UpdateQuery{Where: Where().Eq(c.pk, id)})
 		if err != nil {
 			return nil, err
 		}
@@ -265,6 +361,9 @@ func (c *Crud) Duplicate(ctx context.Context, table string, query DuplicateQuery
 	if err != nil {
 		return nil, err
 	}
+	if err := c.ensurePKColumn(ctx, tbl); err != nil {
+		return nil, err
+	}
 	if err := c.requireWhere(query.Where, "duplicate"); err != nil {
 		return nil, err
 	}
@@ -274,7 +373,7 @@ func (c *Crud) Duplicate(ctx context.Context, table string, query DuplicateQuery
 	}
 	cols := Row{}
 	for k, v := range source {
-		if k == "id" {
+		if k == c.pk {
 			continue
 		}
 		cols[k] = v
@@ -282,7 +381,7 @@ func (c *Crud) Duplicate(ctx context.Context, table string, query DuplicateQuery
 	for k, v := range query.Overrides {
 		cols[k] = v
 	}
-	delete(cols, "id")
+	delete(cols, c.pk)
 	return c.Create(ctx, tbl, cols)
 }
 
@@ -303,6 +402,9 @@ func (c *Crud) BulkCreate(ctx context.Context, table string, rows []Row) (int64,
 func (c *Crud) BulkUpdate(ctx context.Context, table string, cols Row, query UpdateQuery) (int64, error) {
 	tbl, err := AssertString(table, "table")
 	if err != nil {
+		return 0, err
+	}
+	if err := c.ensurePKColumn(ctx, tbl); err != nil {
 		return 0, err
 	}
 	if err := c.requireWhere(query.Where, "bulkUpdate"); err != nil {
@@ -342,8 +444,8 @@ func (c *Crud) BulkUpsert(ctx context.Context, table string, rows []Row) (int64,
 		if row == nil {
 			return n, NewError("each row must be an object")
 		}
-		if _, ok := row["id"]; !ok {
-			return n, NewError("bulkUpsert requires each row to have id")
+		if _, ok := row[c.pk]; !ok {
+			return n, NewError("bulkUpsert requires each row to have " + c.pk)
 		}
 		if _, err := c.Upsert(ctx, table, row); err != nil {
 			return n, err
@@ -358,7 +460,7 @@ func (c *Crud) Transaction(ctx context.Context, fn func(tx *Crud) error) error {
 		return NewError("transaction callback must be a function")
 	}
 	return c.ex.Transaction(ctx, func(txEx Executor) error {
-		return fn(NewCrud(txEx, c.d))
+		return fn(&Crud{ex: txEx, d: c.d, pk: c.pk, pkOK: c.pkOK})
 	})
 }
 

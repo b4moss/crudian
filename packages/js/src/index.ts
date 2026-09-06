@@ -19,6 +19,8 @@ export {
 } from "./where.js"
 export type {
   Row,
+  OffsetSearchResult,
+  CursorSearchResult,
   SearchResult,
   WhereInput,
   ReadQuery,
@@ -27,4 +29,5 @@ export type {
   DeleteQuery,
   UpdateQuery,
   DuplicateQuery,
+  CreateCrudOptions,
 } from "./types.js"

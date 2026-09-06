@@ -126,20 +126,44 @@ func TestSearchListCount(t *testing.T) {
 		}
 	}
 
+	// Default is offset mode
 	page, err := crud.Search(ctx, "items", crudian.SearchQuery{Limit: 2})
 	if err != nil {
-		t.Fatalf("search: %v", err)
+		t.Fatalf("search offset: %v", err)
 	}
-	if len(page.Items) != 2 || !page.HasMore || page.NextCursor == nil || page.Total != 3 {
-		t.Fatalf("page1: %+v", page)
+	if len(page.Items) != 2 || !page.HasMore || page.NextCursor != nil || page.Total != 3 || page.Offset != 0 || page.Limit != 2 {
+		t.Fatalf("offset page1: %+v", page)
 	}
-	page2, err := crud.Search(ctx, "items", crudian.SearchQuery{Limit: 2, Cursor: page.NextCursor})
-	if err != nil || len(page2.Items) != 1 || page2.HasMore || page2.Total != 3 {
-		t.Fatalf("page2: %+v %v", page2, err)
+	off := 2
+	page2, err := crud.Search(ctx, "items", crudian.SearchQuery{Limit: 2, Offset: &off})
+	if err != nil || len(page2.Items) != 1 || page2.HasMore || page2.Total != 3 || page2.Offset != 2 {
+		t.Fatalf("offset page2: %+v %v", page2, err)
+	}
+	past := 10
+	pastEnd, err := crud.Search(ctx, "items", crudian.SearchQuery{Limit: 2, Offset: &past})
+	if err != nil || len(pastEnd.Items) != 0 || pastEnd.HasMore || pastEnd.Total != 3 || pastEnd.Offset != 10 {
+		t.Fatalf("offset past end: %+v %v", pastEnd, err)
+	}
+	explicit, err := crud.Search(ctx, "items", crudian.SearchQuery{Paging: "offset", Limit: 2})
+	if err != nil || len(explicit.Items) != 2 || explicit.Offset != 0 || explicit.NextCursor != nil {
+		t.Fatalf("explicit offset paging: %+v %v", explicit, err)
+	}
+
+	// Explicit cursor mode
+	cpage, err := crud.Search(ctx, "items", crudian.SearchQuery{Paging: "cursor", Limit: 2})
+	if err != nil {
+		t.Fatalf("search cursor: %v", err)
+	}
+	if len(cpage.Items) != 2 || !cpage.HasMore || cpage.NextCursor == nil || cpage.Total != 3 {
+		t.Fatalf("cursor page1: %+v", cpage)
+	}
+	cpage2, err := crud.Search(ctx, "items", crudian.SearchQuery{Paging: "cursor", Limit: 2, Cursor: cpage.NextCursor})
+	if err != nil || len(cpage2.Items) != 1 || cpage2.HasMore || cpage2.Total != 3 {
+		t.Fatalf("cursor page2: %+v %v", cpage2, err)
 	}
 
 	list, err := crud.List(ctx, "items", crudian.SearchQuery{Limit: 2})
-	if err != nil || list.Total != page.Total || len(list.Items) != len(page.Items) {
+	if err != nil || list.Total != page.Total || len(list.Items) != len(page.Items) || list.Offset != page.Offset {
 		t.Fatalf("list alias: %+v vs %+v", list, page)
 	}
 
@@ -203,6 +227,20 @@ func TestSearchListCount(t *testing.T) {
 	}
 	if _, err := crud.Search(ctx, "items", crudian.SearchQuery{Where: crudian.Where().In("name", []any{}), Limit: 10}); err == nil {
 		t.Fatal("empty in")
+	}
+	if _, err := crud.Search(ctx, "items", crudian.SearchQuery{Cursor: 1, Limit: 2}); err == nil {
+		t.Fatal("offset mode with cursor should fail")
+	}
+	zero := 0
+	if _, err := crud.Search(ctx, "items", crudian.SearchQuery{Paging: "cursor", Offset: &zero, Limit: 2}); err == nil {
+		t.Fatal("cursor mode with offset should fail")
+	}
+	neg := -1
+	if _, err := crud.Search(ctx, "items", crudian.SearchQuery{Offset: &neg, Limit: 2}); err == nil {
+		t.Fatal("negative offset should fail")
+	}
+	if _, err := crud.Search(ctx, "items", crudian.SearchQuery{Paging: "bogus", Limit: 2}); err == nil {
+		t.Fatal("bad paging should fail")
 	}
 }
 

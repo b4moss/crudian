@@ -2,6 +2,7 @@ import {
   CrudianError,
   assertString,
   type CountQuery,
+  type CreateCrudOptions,
   type DeleteQuery,
   type DuplicateQuery,
   type ReadQuery,
@@ -10,6 +11,7 @@ import {
   type SearchResult,
   type UpdateQuery,
 } from "../index.js"
+import { createAsyncPkGuard, resolvePk } from "./pk.js"
 import { compileWhere, quoteIdent, resolveWhere } from "./sql.js"
 
 export type AsyncSqliteExecutor = {
@@ -81,7 +83,11 @@ function rowFromObject(value: unknown): Row {
 export function createAsyncSqliteCrud<TDb>(
   db: TDb,
   ex: AsyncSqliteExecutor,
+  options?: CreateCrudOptions,
 ): AsyncSqliteCrud<TDb> {
+  const pk = resolvePk(options)
+  const ensurePkColumn = createAsyncPkGuard(pk, ex.all)
+
   const crud: AsyncSqliteCrud<TDb> = {
     db,
 
@@ -90,6 +96,7 @@ export function createAsyncSqliteCrud<TDb>(
       cols: Record<string, unknown>,
     ): Promise<T> {
       assertString(table, "table")
+      await ensurePkColumn(table)
       if (cols == null || typeof cols !== "object" || Array.isArray(cols)) {
         throw new CrudianError("cols must be an object")
       }
@@ -116,6 +123,7 @@ export function createAsyncSqliteCrud<TDb>(
       query: ReadQuery = {},
     ): Promise<T | null> {
       assertString(table, "table")
+      await ensurePkColumn(table)
       const tbl = quoteIdent(table)
       const where = compileWhere(resolveWhere(query.where))
       const sql =
@@ -132,6 +140,7 @@ export function createAsyncSqliteCrud<TDb>(
       query: UpdateQuery,
     ): Promise<T | null> {
       assertString(table, "table")
+      await ensurePkColumn(table)
       requireWhere(query, "update")
       if (cols == null || typeof cols !== "object" || Array.isArray(cols)) {
         throw new CrudianError("cols must be an object")
@@ -163,6 +172,7 @@ export function createAsyncSqliteCrud<TDb>(
 
     async delete(table: string, query: DeleteQuery): Promise<number> {
       assertString(table, "table")
+      await ensurePkColumn(table)
       requireWhere(query, "delete")
       const tbl = quoteIdent(table)
       const where = compileWhere(resolveWhere(query.where))
@@ -178,9 +188,21 @@ export function createAsyncSqliteCrud<TDb>(
       query: SearchQuery = {},
     ): Promise<SearchResult<T>> {
       assertString(table, "table")
+      await ensurePkColumn(table)
       const limit = query.limit ?? 20
       if (typeof limit !== "number" || !Number.isFinite(limit) || limit <= 0) {
         throw new CrudianError("limit must be a positive number")
+      }
+
+      const paging = query.paging ?? "offset"
+      if (paging !== "offset" && paging !== "cursor") {
+        throw new CrudianError('paging must be "offset" or "cursor"')
+      }
+      if (paging === "offset" && query.cursor !== undefined) {
+        throw new CrudianError("offset paging does not accept cursor")
+      }
+      if (paging === "cursor" && query.offset !== undefined) {
+        throw new CrudianError("cursor paging does not accept offset")
       }
       if (
         query.cursor != null &&
@@ -192,30 +214,54 @@ export function createAsyncSqliteCrud<TDb>(
 
       const tbl = quoteIdent(table)
       const where = compileWhere(resolveWhere(query.where))
+      const total = await crud.count(table, { where: query.where })
+
+      if (paging === "offset") {
+        const offset = query.offset ?? 0
+        if (typeof offset !== "number" || !Number.isFinite(offset) || offset < 0) {
+          throw new CrudianError("offset must be a non-negative number")
+        }
+        const args: unknown[] = [...where.args]
+        const whereSql = where.sql ? ` WHERE ${where.sql}` : ""
+        const sql =
+          `SELECT ${selectColumns(query.columns)} FROM ${tbl}` +
+          whereSql +
+          ` ORDER BY ${quoteIdent(pk)} ASC LIMIT ? OFFSET ?`
+        args.push(limit, offset)
+        const items = (await ex.all(sql, args)).map((r) => rowFromObject(r) as T)
+        return {
+          items,
+          total,
+          offset,
+          limit,
+          hasMore: offset + items.length < total,
+        }
+      }
+
       const args: unknown[] = [...where.args]
       const parts: string[] = []
       if (where.sql) parts.push(`(${where.sql})`)
       if (query.cursor != null) {
-        parts.push(`${quoteIdent("id")} > ?`)
+        parts.push(`${quoteIdent(pk)} > ?`)
         args.push(query.cursor)
       }
       const whereSql = parts.length > 0 ? ` WHERE ${parts.join(" AND ")}` : ""
       const sql =
         `SELECT ${selectColumns(query.columns)} FROM ${tbl}` +
         whereSql +
-        ` ORDER BY ${quoteIdent("id")} ASC LIMIT ?`
+        ` ORDER BY ${quoteIdent(pk)} ASC LIMIT ?`
       args.push(limit + 1)
 
       const rows = (await ex.all(sql, args)).map((r) => rowFromObject(r) as T)
       const hasMore = rows.length > limit
       const items = hasMore ? rows.slice(0, limit) : rows
       const last = items[items.length - 1]
+      const pkVal = last != null ? last[pk] : undefined
       const nextCursor =
-        hasMore && last != null && (typeof last.id === "number" || typeof last.id === "string")
-          ? last.id
+        hasMore && last != null && (typeof pkVal === "number" || typeof pkVal === "string")
+          ? pkVal
           : null
 
-      const total = await crud.count(table, { where: query.where })
       return { items, nextCursor, hasMore, total }
     },
 
@@ -228,6 +274,7 @@ export function createAsyncSqliteCrud<TDb>(
 
     async count(table: string, query: CountQuery = {}): Promise<number> {
       assertString(table, "table")
+      await ensurePkColumn(table)
       const tbl = quoteIdent(table)
       const where = compileWhere(resolveWhere(query.where))
       const sql =
@@ -242,6 +289,7 @@ export function createAsyncSqliteCrud<TDb>(
       cols: Record<string, unknown>,
     ): Promise<T> {
       assertString(table, "table")
+      await ensurePkColumn(table)
       if (cols == null || typeof cols !== "object" || Array.isArray(cols)) {
         throw new CrudianError("cols must be an object")
       }
@@ -249,19 +297,20 @@ export function createAsyncSqliteCrud<TDb>(
       if (keys.length === 0) {
         throw new CrudianError("cols must not be empty")
       }
-      if (!Object.prototype.hasOwnProperty.call(cols, "id")) {
-        throw new CrudianError("upsert requires cols.id")
+      if (!Object.prototype.hasOwnProperty.call(cols, pk)) {
+        throw new CrudianError(`upsert requires cols.${pk}`)
       }
 
-      const id = cols.id
+      const id = cols[pk]
       const existing = await crud.read<T>(table, {
-        where: { type: "cond", op: "eq", column: "id", value: id },
+        where: { type: "cond", op: "eq", column: pk, value: id },
       })
       if (existing != null) {
-        const { id: _id, ...patch } = cols
+        const patch = { ...cols }
+        delete patch[pk]
         if (Object.keys(patch).length === 0) return existing
         const updated = await crud.update<T>(table, patch, {
-          where: { type: "cond", op: "eq", column: "id", value: id },
+          where: { type: "cond", op: "eq", column: pk, value: id },
         })
         if (updated == null) {
           throw new CrudianError("upsert update failed")
@@ -277,11 +326,13 @@ export function createAsyncSqliteCrud<TDb>(
       query: DuplicateQuery,
     ): Promise<T | null> {
       assertString(table, "table")
+      await ensurePkColumn(table)
       requireWhere(query, "duplicate")
       const source = await crud.read<T>(table, { where: query.where })
       if (source == null) return null
 
-      const { id: _id, ...rest } = source
+      const rest = { ...source }
+      delete rest[pk]
       const overrides =
         query.overrides != null &&
         typeof query.overrides === "object" &&
@@ -289,12 +340,13 @@ export function createAsyncSqliteCrud<TDb>(
           ? query.overrides
           : {}
       const cols = { ...rest, ...overrides }
-      delete cols.id
+      delete cols[pk]
       return crud.create<T>(table, cols)
     },
 
     async bulkCreate(table: string, rows: Record<string, unknown>[]): Promise<number> {
       assertString(table, "table")
+      await ensurePkColumn(table)
       if (!Array.isArray(rows)) {
         throw new CrudianError("rows must be an array")
       }
@@ -316,6 +368,7 @@ export function createAsyncSqliteCrud<TDb>(
       query: UpdateQuery,
     ): Promise<number> {
       assertString(table, "table")
+      await ensurePkColumn(table)
       requireWhere(query, "bulkUpdate")
       if (cols == null || typeof cols !== "object" || Array.isArray(cols)) {
         throw new CrudianError("cols must be an object")
@@ -345,6 +398,7 @@ export function createAsyncSqliteCrud<TDb>(
 
     async bulkUpsert(table: string, rows: Record<string, unknown>[]): Promise<number> {
       assertString(table, "table")
+      await ensurePkColumn(table)
       if (!Array.isArray(rows)) {
         throw new CrudianError("rows must be an array")
       }
@@ -354,8 +408,8 @@ export function createAsyncSqliteCrud<TDb>(
         if (row == null || typeof row !== "object" || Array.isArray(row)) {
           throw new CrudianError("each row must be an object")
         }
-        if (!Object.prototype.hasOwnProperty.call(row, "id")) {
-          throw new CrudianError("bulkUpsert requires each row to have id")
+        if (!Object.prototype.hasOwnProperty.call(row, pk)) {
+          throw new CrudianError(`bulkUpsert requires each row to have ${pk}`)
         }
         await crud.upsert(table, row)
         count += 1

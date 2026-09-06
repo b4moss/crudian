@@ -1,0 +1,4 @@
+# Local GitHub Actions dry-runs via nektos/act (wiring smoke only).
+# Correctness of publish/skip logic is covered by `.github/tests/` in CI.
+-P ubuntu-latest=catthehacker/ubuntu:act-latest
+--container-architecture linux/amd64

@@ -1,0 +1,42 @@
+name: Release on tag
+
+on:
+  push:
+    tags:
+      - "**"
+
+# Scorecard Token-Permissions: do not grant contents:write on GITHUB_TOKEN.
+# Optional secret RELEASE_GITHUB_TOKEN (fine-grained or classic PAT with
+# contents:write) is required to create releases; otherwise this job no-ops.
+permissions: read-all
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Create GitHub Release if missing
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${GH_TOKEN}" ]]; then
+            echo "RELEASE_GITHUB_TOKEN is not set; skipping GitHub Release creation."
+            exit 0
+          fi
+          TAG="${GITHUB_REF_NAME}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release already exists: $TAG"
+            exit 0
+          fi
+          PRE=()
+          if [[ "$TAG" =~ (alpha|beta|rc|rev|doc|docs) ]]; then
+            PRE+=(--prerelease)
+          fi
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --generate-notes \
+            --verify-tag \
+            "${PRE[@]}"

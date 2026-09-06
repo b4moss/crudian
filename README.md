@@ -1,5 +1,13 @@
 # crudian
 
+[![CI](https://github.com/b4moss/crudian/actions/workflows/ci.yml/badge.svg)](https://github.com/b4moss/crudian/actions/workflows/ci.yml)
+[![Coverage](https://codecov.io/gh/b4moss/crudian/graph/badge.svg)](https://codecov.io/gh/b4moss/crudian)
+[![npm](https://img.shields.io/npm/v/@b4moss/crudian)](https://www.npmjs.com/package/@b4moss/crudian)
+[![Go Reference](https://pkg.go.dev/badge/github.com/b4moss/crudian/go.svg)](https://pkg.go.dev/github.com/b4moss/crudian/go)
+[![Release](https://img.shields.io/github/v/release/b4moss/crudian)](https://github.com/b4moss/crudian/releases)
+[![License](https://img.shields.io/github/license/b4moss/crudian)](https://github.com/b4moss/crudian/blob/main/LICENSE)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/b4moss/crudian/badge)](https://scorecard.dev/viewer/?uri=github.com/b4moss/crudian)
+
 CRUD abstraction for DDD repositories, packaged per language.
 
 Versions are **independent per language**. A repo milestone name (for example planning `v0.7.0`) does not force every language package to publish that number. It is normal for npm to stay on `0.6.0` while the Go module’s first release is `0.7.0`.
@@ -56,7 +64,8 @@ Usage, drivers, and API notes: [`packages/go/README.md`](./packages/go/README.md
 | [`docs/plans/go-module.md`](./docs/plans/go-module.md) | Go design |
 | [`docs/plans/libsql-adapter.md`](./docs/plans/libsql-adapter.md) | JS libSQL design |
 | [`docs/tests/`](./docs/tests/) | Acceptance tests |
-| [`.github/CI.md`](./.github/CI.md) | CI/CD policy (path-filtered tests, CD per language) |
+| [`.github/CI.md`](./.github/CI.md) | CI/CD policy (path-filtered tests, CD per language, gate tests + act smoke) |
+| [`.github/tests/`](./.github/tests/) | Automated tests for publish/skip gate scripts (`make gate-tests`) |
 
 ## License
 
