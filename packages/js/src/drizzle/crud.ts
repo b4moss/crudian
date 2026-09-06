@@ -1,6 +1,6 @@
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3"
 import type BetterSqlite3 from "better-sqlite3"
-import { CrudianError } from "../index.js"
+import { CrudianError, type CreateCrudOptions } from "../index.js"
 import {
   createSyncSqliteCrud,
   type SyncSqliteCrud,
@@ -16,7 +16,10 @@ export type DrizzleCrud = SyncSqliteCrud<DrizzleSqliteDb>
  * Create a Crud bound to a Drizzle better-sqlite3 database.
  * Raw SQL goes through the underlying better-sqlite3 client (`db.$client`).
  */
-export function createCrud(db: DrizzleSqliteDb): DrizzleCrud {
+export function createCrud(
+  db: DrizzleSqliteDb,
+  options?: CreateCrudOptions,
+): DrizzleCrud {
   if (db == null) {
     throw new CrudianError("db is required")
   }
@@ -28,19 +31,23 @@ export function createCrud(db: DrizzleSqliteDb): DrizzleCrud {
     throw new CrudianError("db.$client must be a better-sqlite3 Database")
   }
 
-  return createSyncSqliteCrud(db, {
-    run(sql, args = []) {
-      const result = client.prepare(sql).run(...args)
-      return { changes: Number(result.changes ?? 0) }
+  return createSyncSqliteCrud(
+    db,
+    {
+      run(sql, args = []) {
+        const result = client.prepare(sql).run(...args)
+        return { changes: Number(result.changes ?? 0) }
+      },
+      get(sql, args = []) {
+        return client.prepare(sql).get(...args) as Record<string, unknown> | undefined
+      },
+      all(sql, args = []) {
+        return client.prepare(sql).all(...args) as Record<string, unknown>[]
+      },
+      transaction(fn) {
+        return client.transaction(fn)()
+      },
     },
-    get(sql, args = []) {
-      return client.prepare(sql).get(...args) as Record<string, unknown> | undefined
-    },
-    all(sql, args = []) {
-      return client.prepare(sql).all(...args) as Record<string, unknown>[]
-    },
-    transaction(fn) {
-      return client.transaction(fn)()
-    },
-  })
+    options,
+  )
 }

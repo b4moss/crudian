@@ -29,4 +29,5 @@ export type {
   DeleteQuery,
   UpdateQuery,
   DuplicateQuery,
+  CreateCrudOptions,
 } from "./types.js"

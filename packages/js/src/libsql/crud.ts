@@ -1,4 +1,4 @@
-import { CrudianError } from "../index.js"
+import { CrudianError, type CreateCrudOptions } from "../index.js"
 import {
   createAsyncSqliteCrud,
   type AsyncSqliteCrud,
@@ -49,7 +49,10 @@ function normalizeRow(row: unknown): Row {
  * Methods are async. The injected client is exposed as `crud.db`.
  * Auth / URL are configured on the caller-created client (e.g. from env).
  */
-export function createCrud(client: LibsqlLikeClient): LibsqlCrud {
+export function createCrud(
+  client: LibsqlLikeClient,
+  options?: CreateCrudOptions,
+): LibsqlCrud {
   if (client == null) {
     throw new CrudianError("db is required")
   }
@@ -63,35 +66,39 @@ export function createCrud(client: LibsqlLikeClient): LibsqlCrud {
 
   let active: LibsqlExecutor = client
 
-  return createAsyncSqliteCrud(client, {
-    async run(sql, args = []) {
-      const result = await active.execute({ sql, args })
-      return { changes: Number(result.rowsAffected ?? 0) }
+  return createAsyncSqliteCrud(
+    client,
+    {
+      async run(sql, args = []) {
+        const result = await active.execute({ sql, args })
+        return { changes: Number(result.rowsAffected ?? 0) }
+      },
+      async get(sql, args = []) {
+        const result = await active.execute({ sql, args })
+        const row = result.rows[0]
+        return row == null ? undefined : normalizeRow(row)
+      },
+      async all(sql, args = []) {
+        const result = await active.execute({ sql, args })
+        return result.rows.map((row) => normalizeRow(row))
+      },
+      async transaction<T>(fn: () => Promise<T>): Promise<T> {
+        const tx = await client.transaction("write")
+        const prev = active
+        active = tx
+        try {
+          const value = await fn()
+          await tx.commit()
+          return value
+        } catch (err) {
+          await tx.rollback()
+          throw err
+        } finally {
+          active = prev
+          tx.close()
+        }
+      },
     },
-    async get(sql, args = []) {
-      const result = await active.execute({ sql, args })
-      const row = result.rows[0]
-      return row == null ? undefined : normalizeRow(row)
-    },
-    async all(sql, args = []) {
-      const result = await active.execute({ sql, args })
-      return result.rows.map((row) => normalizeRow(row))
-    },
-    async transaction<T>(fn: () => Promise<T>): Promise<T> {
-      const tx = await client.transaction("write")
-      const prev = active
-      active = tx
-      try {
-        const value = await fn()
-        await tx.commit()
-        return value
-      } catch (err) {
-        await tx.rollback()
-        throw err
-      } finally {
-        active = prev
-        tx.close()
-      }
-    },
-  })
+    options,
+  )
 }
