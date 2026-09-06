@@ -165,6 +165,20 @@ func (c *Crud) Search(ctx context.Context, table string, query SearchQuery) (Sea
 	if limit <= 0 {
 		return SearchResult{}, NewError("limit must be a positive number")
 	}
+
+	paging := query.Paging
+	if paging == "" {
+		paging = "offset"
+	}
+	if paging != "offset" && paging != "cursor" {
+		return SearchResult{}, NewError("paging must be \"offset\" or \"cursor\"")
+	}
+	if paging == "offset" && query.Cursor != nil {
+		return SearchResult{}, NewError("offset paging does not accept cursor")
+	}
+	if paging == "cursor" && query.Offset != nil {
+		return SearchResult{}, NewError("cursor paging does not accept offset")
+	}
 	if query.Cursor != nil {
 		switch query.Cursor.(type) {
 		case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64, string:
@@ -172,10 +186,46 @@ func (c *Crud) Search(ctx context.Context, table string, query SearchQuery) (Sea
 			return SearchResult{}, NewError("cursor must be a number, string, or null")
 		}
 	}
+
 	where, err := compileWhere(c.d, resolveWhere(query.Where))
 	if err != nil {
 		return SearchResult{}, err
 	}
+	total, err := c.Count(ctx, table, CountQuery{Where: query.Where})
+	if err != nil {
+		return SearchResult{}, err
+	}
+
+	if paging == "offset" {
+		offset := 0
+		if query.Offset != nil {
+			offset = *query.Offset
+		}
+		if offset < 0 {
+			return SearchResult{}, NewError("offset must be a non-negative number")
+		}
+		args := append([]any{}, where.Args...)
+		whereSQL := ""
+		if where.SQL != "" {
+			whereSQL = " WHERE " + where.SQL
+		}
+		sql := "SELECT " + selectColumns(c.d, query.Columns) + " FROM " + c.d.QuoteIdent(tbl) +
+			whereSQL + " ORDER BY " + c.d.QuoteIdent("id") + " ASC LIMIT " + c.d.Placeholder(len(args)+1) +
+			" OFFSET " + c.d.Placeholder(len(args)+2)
+		args = append(args, limit, offset)
+		rows, err := c.ex.All(ctx, sql, args...)
+		if err != nil {
+			return SearchResult{}, err
+		}
+		return SearchResult{
+			Items:   rows,
+			HasMore: int64(offset)+int64(len(rows)) < total,
+			Total:   total,
+			Offset:  offset,
+			Limit:   limit,
+		}, nil
+	}
+
 	args := append([]any{}, where.Args...)
 	parts := make([]string, 0, 2)
 	if where.SQL != "" {
@@ -209,10 +259,6 @@ func (c *Crud) Search(ctx context.Context, table string, query SearchQuery) (Sea
 		if id, ok := items[len(items)-1]["id"]; ok {
 			next = id
 		}
-	}
-	total, err := c.Count(ctx, table, CountQuery{Where: query.Where})
-	if err != nil {
-		return SearchResult{}, err
 	}
 	return SearchResult{Items: items, NextCursor: next, HasMore: hasMore, Total: total}, nil
 }

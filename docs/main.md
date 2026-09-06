@@ -14,7 +14,7 @@ DDD の Repository 層向け CRUD 抽象ライブラリ。
 
 - `create`（対象行を返す）
 - `read`（未ヒットは `null`。`columns?` で投影可）
-- `search`（正式。戻り値は `{ items, nextCursor, hasMore, total }`。`nextCursor` は生の `id`。`total` は where 全件数。`columns?` / `where?` / `limit?` / `cursor?`）
+- `search`（正式。`paging?: "offset" | "cursor"`（**未指定 = `"offset"`**）。offset 時は `{ items, total, offset, limit, hasMore }`、cursor 時は `{ items, nextCursor, hasMore, total }`。`total` は where 全件数。`columns?` / `where?` / `limit?` / `offset?` / `cursor?`）
 - `list`（`search` の別名。同じ `SearchQuery`＝`columns` 含む）
 - `count`（where 全件数を `number` で返す。`CountQuery` は `{ where? }` のみ。`columns` は受け取らない）
 - `update`（対象行を返す。0件なら `null`）
@@ -31,9 +31,11 @@ DDD の Repository 層向け CRUD 抽象ライブラリ。
 
 ## 備考
 
-- `limit` と cursor 方式の pagination を提供する（offset は使わない）
-- cursor は当面 `id` 昇順固定。`nextCursor` は生の `id`
-- `search` / `list` の `total` と `count()` は where 全件数（limit / cursor 非依存）。`count` は `search` と同じ where コンパイルを流用する
+- `limit` と pagination を提供する。方式は `paging` で切替（**デフォルト `"offset"`**。cursor が必要なら `paging: "cursor"` を明示）
+- offset 時は `offset`（default `0`）+ `limit`。cursor 時は既存どおり `cursor` + `limit`（`id` 昇順 keyset。`nextCursor` は生の `id`）
+- モードと相反する入力（offset↔cursor）は拒否する（独自最小エラー）
+- 両モードとも当面 `id` 昇順固定
+- `search` / `list` の `total` と `count()` は where 全件数（limit / offset / cursor 非依存）。`count` は `search` と同じ where コンパイルを流用する
 - 全文検索には対応しない
 - 行データはジェネリクスで型付けする
 - 契約語彙は PHP / Go にも写せる形を先に寄せる
@@ -66,7 +68,7 @@ DDD の Repository 層向け CRUD 抽象ライブラリ。
 | 1 | 正式 API 名 | `search` を正式、`list` は別名 |
 | 2 | 条件 API | ビルダーを主とし、木構造は内部表現 |
 | 3 | 演算子 | `eq/ne/lt/gt/lte/gte/in/like` + `isNull` / `isNotNull` |
-| 4 | cursor レスポンス | `{ items, nextCursor, hasMore }`（v0.5.0 で `total` を追加） |
+| 4 | cursor レスポンス | `{ items, nextCursor, hasMore }`（v0.5.0 で `total` を追加。v0.8.0 で `paging` 切替・デフォルト offset） |
 | 5 | 書き込み戻り値 | `create`/`update`/`upsert`/`duplicate` は対象行、`delete` は影響件数 |
 | 6 | エラー | 独自は最小限。他は SQLite 例外を伝播 |
 | 7 | 識別子 | 形式検証なし（文字列必須のみ） |
@@ -146,6 +148,7 @@ const crud = createCrud(db)
 | **v0.5.0** | `count()` と `SearchResult.total`（#47） |
 | **v0.6.0** | libSQL アダプタ（`@b4moss/crudian/libsql` / `@libsql/client`。#42） |
 | **v0.7.0** | Go モジュール（`go/gorm` + `go/libsql`。**現状 SQLite のみ**。MySQL / Postgres は後続。#48） |
+| **v0.8.0** | `search` / `list` の offset pagination と `paging` 切替（デフォルト `"offset"`。#90）。JS 全アダプタ + Go |
 
 ## バージョン方針
 
