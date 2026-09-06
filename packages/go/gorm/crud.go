@@ -15,12 +15,12 @@ type Crud struct {
 }
 
 // CreateCrud injects an existing *gorm.DB (SQLite). Does not open connections.
-func CreateCrud(db *gormio.DB) (*Crud, error) {
+func CreateCrud(db *gormio.DB, opts ...crudian.Options) (*Crud, error) {
 	if db == nil {
 		return nil, crudian.NewError("db is required")
 	}
 	ex := &gormExecutor{db: db}
-	return &Crud{Crud: crudian.NewCrud(ex, crudian.SqliteDialect{}), DB: db}, nil
+	return &Crud{Crud: crudian.NewCrud(ex, crudian.SqliteDialect{}, opts...), DB: db}, nil
 }
 
 type gormExecutor struct {

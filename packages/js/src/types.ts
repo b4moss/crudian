@@ -35,7 +35,7 @@ export type SearchQuery = {
   paging?: "offset" | "cursor"
   /** Offset for `paging: "offset"` (default `0`). */
   offset?: number
-  /** Raw `id` cursor (keyset) for `paging: "cursor"`. */
+  /** Raw PK cursor (keyset; default column `id`) for `paging: "cursor"`. */
   cursor?: number | string | null
 }
 
@@ -54,4 +54,10 @@ export type UpdateQuery = {
 export type DuplicateQuery = {
   where: WhereInput
   overrides?: Record<string, unknown>
+}
+
+/** Options for `createCrud(db, options?)`. */
+export type CreateCrudOptions = {
+  /** Primary key column name. Default: `"id"`. */
+  pk?: string
 }
