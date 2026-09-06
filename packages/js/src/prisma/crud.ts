@@ -1,4 +1,4 @@
-import { CrudianError } from "../index.js"
+import { CrudianError, type CreateCrudOptions } from "../index.js"
 import {
   createAsyncSqliteCrud,
   type AsyncSqliteCrud,
@@ -26,7 +26,10 @@ function normalizeRow(row: Row): Row {
  * Create a Crud bound to a PrismaClient (SQLite).
  * Methods are async. The injected client is exposed as `crud.db`.
  */
-export function createCrud(client: PrismaLikeClient): PrismaCrud {
+export function createCrud(
+  client: PrismaLikeClient,
+  options?: CreateCrudOptions,
+): PrismaCrud {
   if (client == null) {
     throw new CrudianError("db is required")
   }
@@ -41,33 +44,37 @@ export function createCrud(client: PrismaLikeClient): PrismaCrud {
 
   let active: PrismaLikeClient = client
 
-  return createAsyncSqliteCrud(client, {
-    async run(sql, args = []) {
-      const changes = await active.$executeRawUnsafe(sql, ...args)
-      return { changes: Number(changes ?? 0) }
+  return createAsyncSqliteCrud(
+    client,
+    {
+      async run(sql, args = []) {
+        const changes = await active.$executeRawUnsafe(sql, ...args)
+        return { changes: Number(changes ?? 0) }
+      },
+      async get(sql, args = []) {
+        const result = await active.$queryRawUnsafe<Row[] | Row>(sql, ...args)
+        const rows = normalizeQueryResult(result)
+        const row = rows[0]
+        return row == null ? undefined : normalizeRow(row)
+      },
+      async all(sql, args = []) {
+        const result = await active.$queryRawUnsafe<Row[] | Row>(sql, ...args)
+        return normalizeQueryResult(result).map(normalizeRow)
+      },
+      async transaction<T>(fn: () => Promise<T>): Promise<T> {
+        return client.$transaction(async (tx) => {
+          const prev = active
+          active = tx
+          try {
+            return await fn()
+          } finally {
+            active = prev
+          }
+        })
+      },
     },
-    async get(sql, args = []) {
-      const result = await active.$queryRawUnsafe<Row[] | Row>(sql, ...args)
-      const rows = normalizeQueryResult(result)
-      const row = rows[0]
-      return row == null ? undefined : normalizeRow(row)
-    },
-    async all(sql, args = []) {
-      const result = await active.$queryRawUnsafe<Row[] | Row>(sql, ...args)
-      return normalizeQueryResult(result).map(normalizeRow)
-    },
-    async transaction<T>(fn: () => Promise<T>): Promise<T> {
-      return client.$transaction(async (tx) => {
-        const prev = active
-        active = tx
-        try {
-          return await fn()
-        } finally {
-          active = prev
-        }
-      })
-    },
-  })
+    options,
+  )
 }
 
 function normalizeQueryResult(result: Row[] | Row | null | undefined): Row[] {

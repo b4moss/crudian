@@ -1,5 +1,5 @@
 import type { Database, SQLQueryBindings } from "bun:sqlite"
-import { CrudianError } from "../index.js"
+import { CrudianError, type CreateCrudOptions } from "../index.js"
 import {
   createSyncSqliteCrud,
   type SyncSqliteCrud,
@@ -15,7 +15,10 @@ export type BunSqliteCrud = SyncSqliteCrud<Database>
  * Create a Crud bound to a Bun SQLite Database.
  * The same Database instance is reused for every operation.
  */
-export function createCrud(db: Database): BunSqliteCrud {
+export function createCrud(
+  db: Database,
+  options?: CreateCrudOptions,
+): BunSqliteCrud {
   if (db == null) {
     throw new CrudianError("db is required")
   }
@@ -23,21 +26,25 @@ export function createCrud(db: Database): BunSqliteCrud {
     throw new CrudianError("db must be a bun:sqlite Database")
   }
 
-  return createSyncSqliteCrud(db, {
-    run(sql, args = []) {
-      const result = db.query(sql).run(...bindings(args))
-      return { changes: Number(result.changes ?? 0) }
+  return createSyncSqliteCrud(
+    db,
+    {
+      run(sql, args = []) {
+        const result = db.query(sql).run(...bindings(args))
+        return { changes: Number(result.changes ?? 0) }
+      },
+      get(sql, args = []) {
+        return db.query(sql).get(...bindings(args)) as
+          | Record<string, unknown>
+          | undefined
+      },
+      all(sql, args = []) {
+        return db.query(sql).all(...bindings(args)) as Record<string, unknown>[]
+      },
+      transaction(fn) {
+        return db.transaction(fn)()
+      },
     },
-    get(sql, args = []) {
-      return db.query(sql).get(...bindings(args)) as
-        | Record<string, unknown>
-        | undefined
-    },
-    all(sql, args = []) {
-      return db.query(sql).all(...bindings(args)) as Record<string, unknown>[]
-    },
-    transaction(fn) {
-      return db.transaction(fn)()
-    },
-  })
+    options,
+  )
 }

@@ -43,9 +43,9 @@
     "prisma:generate": "prisma generate --schema prisma/schema.prisma",
     "test": "bun run test:bun-sqlite && bun run test:drizzle && bun run test:prisma && bun run test:libsql",
     "test:bun-sqlite": "bun test src/bun-sqlite",
-    "test:drizzle": "tsx --test src/drizzle/crud.test.ts",
-    "test:prisma": "bun run prisma:generate && tsx --test src/prisma/crud.test.ts",
-    "test:libsql": "tsx --test src/libsql/crud.test.ts"
+    "test:drizzle": "tsx --test src/drizzle/crud.test.ts src/drizzle/pk.test.ts",
+    "test:prisma": "bun run prisma:generate && tsx --test src/prisma/crud.test.ts src/prisma/pk.test.ts",
+    "test:libsql": "tsx --test src/libsql/crud.test.ts src/libsql/pk.test.ts"
   },
   "engines": {
     "node": ">=24",
