@@ -15,6 +15,7 @@
 | v0.6.0 | [v0.6.0.md](./v0.6.0.md)（`@b4moss/crudian/libsql` / #42） |
 | v0.7.0 | [v0.7.0.md](./v0.7.0.md)（Go `gorm` / `libsql` / #48） |
 | v0.8.0 | [v0.8.0.md](./v0.8.0.md)（offset pagination / `paging` 切替 / #90） |
+| v0.9.0 | [v0.9.0.md](./v0.9.0.md)（可変 PK / `createCrud` options / #72） |
 
 戻る: [../main.md](../main.md)
 
