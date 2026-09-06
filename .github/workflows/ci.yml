@@ -178,13 +178,14 @@ jobs:
 
       - name: Test bun-sqlite with coverage
         if: steps.skip.outputs.hit != 'true'
-        run: bun test --coverage src/bun-sqlite
+        run: bun test --coverage --coverage-reporter=lcov src/bun-sqlite
 
       - name: Upload JS coverage to Codecov
         if: steps.skip.outputs.hit != 'true'
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          files: packages/js/coverage/lcov.info
           flags: bun-sqlite
           fail_ci_if_error: false
           verbose: true
