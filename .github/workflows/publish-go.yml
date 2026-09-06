@@ -15,14 +15,15 @@ concurrency:
   group: publish-go-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
-permissions:
-  contents: write
+permissions: read-all
 
 jobs:
   publish:
     name: publish github.com/b4moss/crudian/go
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: write
     defaults:
       run:
         working-directory: packages/go
