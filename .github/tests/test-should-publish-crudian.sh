@@ -102,5 +102,95 @@ echo "== should-publish-crudian =="
   rm -rf "$PUB" "$out"
 }
 
+# --- squash merge onto release: tag not ancestor, but trees match → publish ---
+{
+  FIX="$(make_fixture)"
+  ROOT_SHA="$(git -C "$FIX" rev-parse HEAD)"
+
+  node -e "
+    const fs=require('fs');
+    const p='$FIX/packages/js/package.json';
+    const j=JSON.parse(fs.readFileSync(p,'utf8'));
+    j.version='0.6.1';
+    fs.writeFileSync(p, JSON.stringify(j,null,2)+'\n');
+  "
+  echo "readme local changed" >"$FIX/packages/js/README.md"
+  git -C "$FIX" add -A
+  git -C "$FIX" commit -q -m "bump 0.6.1 on main"
+  git -C "$FIX" tag v0.6.1
+  MAIN_SHA="$(git -C "$FIX" rev-parse HEAD)"
+
+  # Simulate squash onto an older release tip: same tree, no tag ancestry.
+  git -C "$FIX" checkout -q -B release "$ROOT_SHA"
+  git -C "$FIX" checkout -q "$MAIN_SHA" -- .
+  git -C "$FIX" commit -q -m "v0.6.1 squash onto release"
+  # Keep the tag reachable (as on a real remote) without making it an ancestor.
+  git -C "$FIX" update-ref "refs/tags/v0.6.1" "$MAIN_SHA"
+
+  if git -C "$FIX" merge-base --is-ancestor "$MAIN_SHA" HEAD; then
+    echo "  FAIL squash fixture unexpectedly has tag as ancestor"
+    FAIL=$((FAIL + 1))
+  else
+    PUB="$(mktemp -d)"
+    mkdir -p "$PUB/dist"
+    echo '{"name":"@b4moss/crudian","version":"0.6.0","files":["dist","LICENSE","README.md"]}' >"$PUB/package.json"
+    echo "published dist" >"$PUB/dist/index.js"
+    echo "MIT" >"$PUB/LICENSE"
+    echo "readme published" >"$PUB/README.md"
+    export FAKE_NPM_PUB_DIR="$PUB"
+    export FAKE_NPM_VERSIONS="0.6.0"
+    export FAKE_NPM_LATEST="0.6.0"
+
+    out="$(mktemp)"
+    run_decide_npm "$FIX" "$out" >/tmp/npm-decide-5.log
+    assert_eq "squash same tree → publish" "$(output_get "$out" skip)" "false"
+    assert_eq "squash tag emitted" "$(output_get "$out" tag)" "v0.6.1"
+    assert_file_has "squash-safe message" /tmp/npm-decide-5.log "squash-safe"
+    rm -rf "$PUB" "$out"
+  fi
+  cleanup_fixture "$FIX"
+}
+
+# --- tag not ancestor and trees differ → skip ---
+{
+  FIX="$(make_fixture)"
+  ROOT_SHA="$(git -C "$FIX" rev-parse HEAD)"
+
+  node -e "
+    const fs=require('fs');
+    const p='$FIX/packages/js/package.json';
+    const j=JSON.parse(fs.readFileSync(p,'utf8'));
+    j.version='0.6.1';
+    fs.writeFileSync(p, JSON.stringify(j,null,2)+'\n');
+  "
+  git -C "$FIX" add -A
+  git -C "$FIX" commit -q -m "bump 0.6.1 on main"
+  git -C "$FIX" tag v0.6.1
+  MAIN_SHA="$(git -C "$FIX" rev-parse HEAD)"
+
+  # Release tip also claims 0.6.1 but with a different tree (not a squash of main).
+  git -C "$FIX" checkout -q -B release "$ROOT_SHA"
+  node -e "
+    const fs=require('fs');
+    const p='$FIX/packages/js/package.json';
+    const j=JSON.parse(fs.readFileSync(p,'utf8'));
+    j.version='0.6.1';
+    fs.writeFileSync(p, JSON.stringify(j,null,2)+'\n');
+  "
+  echo "divergent release content" >"$FIX/packages/js/README.md"
+  git -C "$FIX" add -A
+  git -C "$FIX" commit -q -m "unrelated 0.6.1 on release"
+  git -C "$FIX" update-ref "refs/tags/v0.6.1" "$MAIN_SHA"
+
+  out="$(mktemp)"
+  export FAKE_NPM_VERSIONS=""
+  export FAKE_NPM_LATEST=""
+  run_decide_npm "$FIX" "$out" >/tmp/npm-decide-6.log || true
+  assert_eq "divergent tree → skip" "$(output_get "$out" skip)" "true"
+  assert_file_has "divergent tree message" /tmp/npm-decide-6.log "trees differ"
+  cleanup_fixture "$FIX"
+  rm -f "$out"
+}
+
 echo "npm decide: pass=$PASS fail=$FAIL"
 [[ "$FAIL" -eq 0 ]]
