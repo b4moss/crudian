@@ -38,7 +38,7 @@ describe("createCrud", () => {
     expect(crud.db).toBe(db)
   })
 
-  test("正常系: CRUD / search / list / count / transaction を持つ", () => {
+  test("正常系: CRUD / search / list / count / exists / transaction を持つ", () => {
     const crud = crudFixture()
     expect(typeof crud.create).toBe("function")
     expect(typeof crud.read).toBe("function")
@@ -47,6 +47,7 @@ describe("createCrud", () => {
     expect(typeof crud.search).toBe("function")
     expect(typeof crud.list).toBe("function")
     expect(typeof crud.count).toBe("function")
+    expect(typeof crud.exists).toBe("function")
     expect(typeof crud.transaction).toBe("function")
   })
 
@@ -293,6 +294,45 @@ describe("count", () => {
       CrudianError,
     )
     expect(() => crud.count("no_such_table")).toThrow()
+  })
+})
+
+describe("exists", () => {
+  test("正常系: 空表 false / 挿入後 true / where ヒット・ミス", () => {
+    const crud = crudFixture()
+    expect(crud.exists("items")).toBe(false)
+
+    crud.create("items", { name: "alice", score: 10, note: null })
+    crud.create("items", { name: "bob", score: 20, note: "x" })
+    expect(crud.exists("items")).toBe(true)
+    expect(crud.exists("items", { where: where().eq("name", "alice") })).toBe(true)
+    expect(crud.exists("items", { where: where().eq("name", "missing") })).toBe(
+      false,
+    )
+  })
+
+  test("正常系: exists は count > 0 と同値", () => {
+    const crud = crudFixture()
+    crud.create("items", { name: "alice", score: 10, note: null })
+    crud.create("items", { name: "bob", score: 20, note: "x" })
+    const cases = [
+      undefined,
+      { where: where().eq("name", "alice") },
+      { where: where().eq("name", "missing") },
+      { where: where().gte("score", 20) },
+    ] as const
+    for (const query of cases) {
+      expect(crud.exists("items", query)).toBe(crud.count("items", query) > 0)
+    }
+  })
+
+  test("異常系: テーブル名不正 / in 空 / 存在しない表", () => {
+    const crud = crudFixture()
+    expect(() => crud.exists(123 as never)).toThrow(CrudianError)
+    expect(() =>
+      crud.exists("items", { where: where().in("name", []) }),
+    ).toThrow(CrudianError)
+    expect(() => crud.exists("no_such_table")).toThrow()
   })
 })
 

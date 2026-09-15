@@ -58,6 +58,7 @@ describe("drizzle.createCrud", () => {
       "search",
       "list",
       "count",
+      "exists",
       "transaction",
     ] as const) {
       assert.equal(typeof crud[name], "function")
@@ -145,6 +146,32 @@ describe("drizzle.count", () => {
     assert.throws(() => crud.count(1 as never), CrudianError)
     assert.throws(
       () => crud.count("items", { where: where().in("name", []) }),
+      CrudianError,
+    )
+  })
+})
+
+describe("drizzle.exists", () => {
+  test("正常系: 空表 false / 挿入後 true / where / count>0 同値", () => {
+    const crud = crudFixture()
+    assert.equal(crud.exists("items"), false)
+    crud.create("items", { name: "a", score: 1 })
+    crud.create("items", { name: "b", score: 2 })
+    assert.equal(crud.exists("items"), true)
+    assert.equal(crud.exists("items", { where: where().eq("name", "a") }), true)
+    assert.equal(
+      crud.exists("items", { where: where().eq("name", "missing") }),
+      false,
+    )
+    const w = { where: where().eq("name", "a") }
+    assert.equal(crud.exists("items", w), crud.count("items", w) > 0)
+  })
+
+  test("異常系: テーブル名 / in 空", () => {
+    const crud = crudFixture()
+    assert.throws(() => crud.exists(1 as never), CrudianError)
+    assert.throws(
+      () => crud.exists("items", { where: where().in("name", []) }),
       CrudianError,
     )
   })
