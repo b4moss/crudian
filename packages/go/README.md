@@ -40,6 +40,31 @@ Language versions are independent: npm `@b4moss/crudian` may remain on `0.6.0` w
 
 `CreateCrud` never opens connections. The caller owns the DB and can use `crud.DB` for escapes.
 
+### Connection pool / lifetime (#105)
+
+For server databases (MySQL / Postgres later), set pool options on the underlying `*sql.DB`:
+
+| Backend | Behavior |
+|---------|----------|
+| **GORM** | Pass `crudian.Options{Pool: &crudian.PoolOptions{...}}` to `CreateCrud` — applied via `db.DB()` |
+| **libSQL** | `Pool` is accepted but **ignored** (single-connection oriented). Call `crudian.ApplyPool(db, …)` yourself only if you need it |
+| **JS** | Deferred to Dialect work ([#73](https://github.com/b4moss/crudian/issues/73)) |
+
+Nil fields in `PoolOptions` leave that setting unchanged. Helpers: `crudian.ApplyPool(*sql.DB, *PoolOptions)`.
+
+```go
+maxOpen := 10
+idle := 5
+lifetime := time.Hour
+crud, err := gorm.CreateCrud(db, crudian.Options{
+	Pool: &crudian.PoolOptions{
+		MaxOpenConns:    &maxOpen,
+		MaxIdleConns:    &idle,
+		ConnMaxLifetime: &lifetime,
+	},
+})
+```
+
 ## GORM / SQLite
 
 ```go
@@ -136,6 +161,7 @@ All methods take `ctx context.Context` first. Table names are plain strings.
 | `Delete` | rows affected | requires `Where` |
 | `Search` / `List` | `SearchResult` | cursor on `id` ASC; includes `Total` |
 | `Count` | `int64` | `Where` only |
+| `Exists` | `bool` | `Where` only; presence sugar (`Count > 0`) |
 | `Upsert` | row | requires `cols["id"]` |
 | `Duplicate` | row or `nil` | requires `Where` |
 | `BulkCreate` / `BulkUpdate` / `BulkDelete` / `BulkUpsert` | count | |

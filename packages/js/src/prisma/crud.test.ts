@@ -72,6 +72,7 @@ describe("prisma.createCrud", () => {
       "search",
       "list",
       "count",
+      "exists",
       "transaction",
     ] as const) {
       assert.equal(typeof crud[name], "function")
@@ -166,6 +167,35 @@ describe("prisma.count", () => {
     await assert.rejects(() => crud.count(1 as never), CrudianError)
     await assert.rejects(
       () => crud.count("items", { where: where().in("name", []) }),
+      CrudianError,
+    )
+  })
+})
+
+describe("prisma.exists", () => {
+  test("正常系: 空表 false / 挿入後 true / where / count>0 同値", async () => {
+    const crud = await crudFixture()
+    assert.equal(await crud.exists("items"), false)
+    await crud.create("items", { name: "a", score: 1 })
+    await crud.create("items", { name: "b", score: 2 })
+    assert.equal(await crud.exists("items"), true)
+    assert.equal(
+      await crud.exists("items", { where: where().eq("name", "a") }),
+      true,
+    )
+    assert.equal(
+      await crud.exists("items", { where: where().eq("name", "missing") }),
+      false,
+    )
+    const w = { where: where().eq("name", "a") }
+    assert.equal(await crud.exists("items", w), (await crud.count("items", w)) > 0)
+  })
+
+  test("異常系: テーブル名 / in 空", async () => {
+    const crud = await crudFixture()
+    await assert.rejects(() => crud.exists(1 as never), CrudianError)
+    await assert.rejects(
+      () => crud.exists("items", { where: where().in("name", []) }),
       CrudianError,
     )
   })

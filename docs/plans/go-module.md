@@ -67,9 +67,10 @@ page, err := crud.Search(ctx, "items", crudian.SearchQuery{
 
 - 入口は `CreateCrud(db)`。内部で接続を生成しない
 - 生の DB を公開（GORM: `*gorm.DB`、libSQL: `*sql.DB`）
-- メソッド: `Create` / `Read` / `Update` / `Delete` / `Search` / `List` / `Count` / `Upsert` / `Duplicate` / `BulkCreate` / `BulkUpdate` / `BulkDelete` / `BulkUpsert` / `Transaction`
+- メソッド: `Create` / `Read` / `Update` / `Delete` / `Search` / `List` / `Count` / `Exists` / `Upsert` / `Duplicate` / `BulkCreate` / `BulkUpdate` / `BulkDelete` / `BulkUpsert` / `Transaction`
 - 行は `map[string]any`（ジェネリクスは必要なら後続）。モデル／構造体マッピングはしない
 - エラーは `(T, error)`。未ヒットの `Read` / `Update` / `Duplicate` は `(nil, nil)` 相当（行なしを error にしない）
+- 接続プール: `Options.Pool` / `ApplyPool`（#105）。**GORM は `CreateCrud` 時に適用**、**libSQL は no-op**（呼び出し側が必要なら `ApplyPool` を直接呼ぶ）
 
 ### 契約の固定（JS と同じ）
 
@@ -79,6 +80,8 @@ page, err := crud.Search(ctx, "items", crudian.SearchQuery{
 | cursor | `id` 昇順。`NextCursor` は生の `id` |
 | `SearchResult` | `Items`, `NextCursor`, `HasMore`, `Total` |
 | `Count` | where 全件数。`limit` / `cursor` / `columns` は受け取らない |
+| `Exists` | where 一致の有無（bool）。入力は `Count` と同型。件数は返さない |
+| `Pool` / `ApplyPool` | `*sql.DB` の MaxOpen / MaxIdle / ConnMaxLifetime / ConnMaxIdleTime。未指定フィールドは触らない。GORM 適用・libSQL no-op |
 | `columns` | `Read` / `Search` / `List` で投影可。省略は全列 |
 | 識別子 | 文字列必須。形式検証なし |
 | 独自エラー | 最小限。他はドライバ / GORM 例外を伝播 |

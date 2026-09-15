@@ -21,6 +21,7 @@
 | **v0.5.0** | count / SearchResult.total | `count()` と `search`/`list` の `total` が bun-sqlite / drizzle / prisma で揃う（#47） |
 | **v0.6.0** | libSQL adapter | `@b4moss/crudian/libsql`（`@libsql/client`）が既存契約と同等 API・テストで通る（#42） |
 | **v0.7.0** | Go module | `github.com/b4moss/crudian/go/gorm`（SQLite）と `.../go/libsql` が同等契約で通る（#48） |
+| **v0.9.0** | exists | `exists` / `Exists`（boolean 糖衣。入力は `count` と同型。#106）。Go 接続プール／lifetime（GORM 適用・libSQL no-op。#105。JS は #73） |
 | **v0.4.0** | Docker / E2E harness | 全ランタイム 1 コンテナ + Postgres / MySQL / MariaDB 上の E2E 基盤（[#44](https://github.com/b4moss/crudian/issues/44)） |
 
 ---
@@ -164,24 +165,26 @@ JS 契約を Go へ移植する（#48）。**Go の公開初版は `0.7.0`**（`
 
 ## 機能 × マイルストーン早見
 
-| 機能 | v0.1.0 | v0.2.0 | v0.3.0 | v0.5.0 | v0.6.0 | v0.7.0 |
-|------|:------:|:------:|:------:|:------:|:------:|:------:|
-| 共有契約・ビルダー型 | ✓ | | | | | |
-| `createCrud` / 生 `db` | ✓ | | | | | |
-| `create` / `read` / `update` / `delete` | ✓ | | | | | |
-| `search` / `list` + cursor | ✓ | | | | | |
-| 条件ビルダー（演算子・and/or） | ✓ | | | | | |
-| `transaction` | ✓ | | | | | |
-| `tsc` / `exports` / 誤 import ガード | ✓ | | | | | |
-| Core のインメモリテスト | ✓ | | | | | |
-| `upsert` / `duplicate` | | ✓ | | | | |
-| `bulk*` | | ✓ | | | | |
-| Extended のインメモリテスト | | ✓ | | | | |
-| テンプレ試し食い | | △ | | | | |
-| drizzle / prisma | | | ✓ | | | |
-| `count` / `SearchResult.total` | | | | ✓ | | |
-| libsql（`@libsql/client`） | | | | | ✓ | |
-| Go gorm（SQLite）/ libsql | | | | | | ✓ |
+| 機能 | v0.1.0 | v0.2.0 | v0.3.0 | v0.5.0 | v0.6.0 | v0.7.0 | v0.9.0 |
+|------|:------:|:------:|:------:|:------:|:------:|:------:|:------:|
+| 共有契約・ビルダー型 | ✓ | | | | | | |
+| `createCrud` / 生 `db` | ✓ | | | | | | |
+| `create` / `read` / `update` / `delete` | ✓ | | | | | | |
+| `search` / `list` + cursor | ✓ | | | | | | |
+| 条件ビルダー（演算子・and/or） | ✓ | | | | | | |
+| `transaction` | ✓ | | | | | | |
+| `tsc` / `exports` / 誤 import ガード | ✓ | | | | | | |
+| Core のインメモリテスト | ✓ | | | | | | |
+| `upsert` / `duplicate` | | ✓ | | | | | |
+| `bulk*` | | ✓ | | | | | |
+| Extended のインメモリテスト | | ✓ | | | | | |
+| テンプレ試し食い | | △ | | | | | |
+| drizzle / prisma | | | ✓ | | | | |
+| `count` / `SearchResult.total` | | | | ✓ | | | |
+| libsql（`@libsql/client`） | | | | | ✓ | | |
+| Go gorm（SQLite）/ libsql | | | | | | ✓ | |
+| `exists` / `Exists` | | | | | | | ✓ |
+| Go `PoolOptions` / `ApplyPool`（GORM 適用） | | | | | | | ✓ |
 
 △ = 推奨（必須にするかは未決）
 
@@ -203,6 +206,8 @@ JS 契約を Go へ移植する（#48）。**Go の公開初版は `0.7.0`**（`
 | **v0.5.0** | #47 `count` / `SearchResult.total` |
 | **v0.6.0** | #42 libSQL アダプタ（`@b4moss/crudian/libsql`） |
 | **v0.7.0** | #48 Go モジュール化（gorm SQLite / libsql） |
+| **v0.9.0** | #106 `exists` / `Exists`（boolean 糖衣） |
+| | #105 DB 接続プール／lifetime（Go/GORM 先行。JS は #73） |
 | **v0.4.0** | #44 Docker / Dev Containers（全ランタイム 1 コンテナ + 実 DB E2E） |
 
 クローズ済み（方針変更により機能 Issue へ内包）: #10 / #11

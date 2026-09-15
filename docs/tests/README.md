@@ -15,6 +15,7 @@
 | v0.6.0 | [v0.6.0.md](./v0.6.0.md)（`@b4moss/crudian/libsql` / #42） |
 | v0.7.0 | [v0.7.0.md](./v0.7.0.md)（Go `gorm` / `libsql` / #48） |
 | v0.8.0 | [v0.8.0.md](./v0.8.0.md)（offset pagination / #90、可変 PK / #72） |
+| v0.9.0 | [v0.9.0.md](./v0.9.0.md)（`exists` / #106、接続プール／lifetime / #105） |
 
 戻る: [../main.md](../main.md)
 

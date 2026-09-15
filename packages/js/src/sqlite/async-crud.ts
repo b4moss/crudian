@@ -59,6 +59,7 @@ export type AsyncSqliteCrud<TDb> = {
     query?: SearchQuery,
   ): Promise<SearchResult<T>>
   count(table: string, query?: CountQuery): Promise<number>
+  exists(table: string, query?: CountQuery): Promise<boolean>
   transaction<T>(fn: () => Promise<T>): Promise<T>
 }
 
@@ -282,6 +283,19 @@ export function createAsyncSqliteCrud<TDb>(
         (where.sql ? ` WHERE ${where.sql}` : "")
       const row = await ex.get(sql, where.args)
       return Number(row?.row_count ?? 0)
+    },
+
+    async exists(table: string, query: CountQuery = {}): Promise<boolean> {
+      assertString(table, "table")
+      await ensurePkColumn(table)
+      const tbl = quoteIdent(table)
+      const where = compileWhere(resolveWhere(query.where))
+      const sql =
+        `SELECT 1 AS ${quoteIdent("ok")} FROM ${tbl}` +
+        (where.sql ? ` WHERE ${where.sql}` : "") +
+        ` LIMIT 1`
+      const row = await ex.get(sql, where.args)
+      return row != null
     },
 
     async upsert<T extends Row = Row>(
