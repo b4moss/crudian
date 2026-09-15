@@ -136,6 +136,7 @@ All methods take `ctx context.Context` first. Table names are plain strings.
 | `Delete` | rows affected | requires `Where` |
 | `Search` / `List` | `SearchResult` | cursor on `id` ASC; includes `Total` |
 | `Count` | `int64` | `Where` only |
+| `Exists` | `bool` | `Where` only; presence sugar (`Count > 0`) |
 | `Upsert` | row | requires `cols["id"]` |
 | `Duplicate` | row or `nil` | requires `Where` |
 | `BulkCreate` / `BulkUpdate` / `BulkDelete` / `BulkUpsert` | count | |
