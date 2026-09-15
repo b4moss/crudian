@@ -4,6 +4,7 @@ import (
 	"context"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/b4moss/crudian/go/crudian"
 	gormcrud "github.com/b4moss/crudian/go/gorm"
@@ -403,5 +404,58 @@ func toInt64(v any) int64 {
 		return int64(n)
 	default:
 		return 0
+	}
+}
+
+func TestPoolOptions(t *testing.T) {
+	ctx := context.Background()
+	db := openDB(t)
+
+	maxOpen := 4
+	maxIdle := 2
+	lifetime := 45 * time.Second
+	idleTime := 10 * time.Second
+	crud, err := gormcrud.CreateCrud(db, crudian.Options{
+		Pool: &crudian.PoolOptions{
+			MaxOpenConns:    &maxOpen,
+			MaxIdleConns:    &maxIdle,
+			ConnMaxLifetime: &lifetime,
+			ConnMaxIdleTime: &idleTime,
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateCrud with pool: %v", err)
+	}
+	sqlDB, err := crud.DB.DB()
+	if err != nil {
+		t.Fatalf("DB(): %v", err)
+	}
+	if got := sqlDB.Stats().MaxOpenConnections; got != maxOpen {
+		t.Fatalf("MaxOpenConnections: got %d want %d", got, maxOpen)
+	}
+
+	if _, err := crud.Create(ctx, "items", crudian.Row{"name": "pool", "score": 1}); err != nil {
+		t.Fatalf("create after pool: %v", err)
+	}
+	cnt, err := crud.Count(ctx, "items", crudian.CountQuery{})
+	if err != nil || cnt != 1 {
+		t.Fatalf("count after pool: %d %v", cnt, err)
+	}
+
+	// PK + Pool together
+	db2 := openDB(t)
+	crud2, err := gormcrud.CreateCrud(db2, crudian.Options{
+		PK:   "id",
+		Pool: &crudian.PoolOptions{MaxOpenConns: &maxOpen},
+	})
+	if err != nil {
+		t.Fatalf("CreateCrud PK+Pool: %v", err)
+	}
+	sqlDB2, err := crud2.DB.DB()
+	if err != nil {
+		t.Fatalf("DB2(): %v", err)
+	}
+	if got := sqlDB2.Stats().MaxOpenConnections; got != maxOpen {
+		t.Fatalf("PK+Pool MaxOpen: got %d want %d", got, maxOpen)
 	}
 }
