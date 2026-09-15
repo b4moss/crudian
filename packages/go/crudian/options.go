@@ -2,8 +2,10 @@ package crudian
 
 // Options configures NewCrud / CreateCrud.
 // Zero-value PK means default "id" (Go cannot distinguish omit vs "").
+// Pool is applied only by backends that support it (GORM); libSQL ignores it.
 type Options struct {
-	PK string
+	PK   string
+	Pool *PoolOptions
 }
 
 func resolvePK(opts []Options) string {

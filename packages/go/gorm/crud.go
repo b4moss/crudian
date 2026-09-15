@@ -15,9 +15,19 @@ type Crud struct {
 }
 
 // CreateCrud injects an existing *gorm.DB (SQLite). Does not open connections.
+// When Options.Pool is set, settings are applied to the underlying *sql.DB via db.DB().
 func CreateCrud(db *gormio.DB, opts ...crudian.Options) (*Crud, error) {
 	if db == nil {
 		return nil, crudian.NewError("db is required")
+	}
+	if len(opts) > 0 && opts[0].Pool != nil {
+		sqlDB, err := db.DB()
+		if err != nil {
+			return nil, err
+		}
+		if err := crudian.ApplyPool(sqlDB, opts[0].Pool); err != nil {
+			return nil, err
+		}
 	}
 	ex := &gormExecutor{db: db}
 	return &Crud{Crud: crudian.NewCrud(ex, crudian.SqliteDialect{}, opts...), DB: db}, nil
