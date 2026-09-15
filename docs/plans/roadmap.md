@@ -1,7 +1,7 @@
 # Roadmap — bun:sqlite CRUD Trait
 
 `@b4moss/crudian/bun-sqlite` を参照実装として、機能をマイルストーンに割り当てる。  
-仕様の正は [`docs/main.md`](../main.md)。設計詳細は [`bun-sqlite-adapter.md`](./bun-sqlite-adapter.md)。libSQL は [`libsql-adapter.md`](./libsql-adapter.md)。Go は [`go-module.md`](./go-module.md)。
+仕様の正は [`docs/main.md`](../main.md)。設計詳細は [`bun-sqlite-adapter.md`](./bun-sqlite-adapter.md)。libSQL は [`libsql-adapter.md`](./libsql-adapter.md)。Go は [`go-module.md`](./go-module.md)。TypeORM は [`typeorm-adapter.md`](./typeorm-adapter.md)。
 
 ## 方針
 
@@ -21,7 +21,10 @@
 | **v0.5.0** | count / SearchResult.total | `count()` と `search`/`list` の `total` が bun-sqlite / drizzle / prisma で揃う（#47） |
 | **v0.6.0** | libSQL adapter | `@b4moss/crudian/libsql`（`@libsql/client`）が既存契約と同等 API・テストで通る（#42） |
 | **v0.7.0** | Go module | `github.com/b4moss/crudian/go/gorm`（SQLite）と `.../go/libsql` が同等契約で通る（#48） |
+| **v0.9.0** | exists | `exists` / `Exists`（boolean 糖衣。入力は `count` と同型。#106）。Go 接続プール／lifetime（GORM 適用・libSQL no-op。#105。JS は #73） |
 | **v0.4.0** | Docker / E2E harness | 全ランタイム 1 コンテナ + Postgres / MySQL / MariaDB 上の E2E 基盤（[#44](https://github.com/b4moss/crudian/issues/44)） |
+| **v0.10.0** | Dialect / MySQL・Postgres | SQL 方言の切り出しと MySQL / Postgres 対応。JS プールもここに載せる（[#73](https://github.com/b4moss/crudian/issues/73)、#105 の JS 分） |
+| **v0.11.0** | TypeORM adapter / coverage | `@b4moss/crudian/typeorm`（[#43](https://github.com/b4moss/crudian/issues/43)）と codecov 75%（[#96](https://github.com/b4moss/crudian/issues/96)） |
 
 ---
 
@@ -162,26 +165,69 @@ JS 契約を Go へ移植する（#48）。**Go の公開初版は `0.7.0`**（`
 
 ---
 
+## v0.10.0 — Dialect / MySQL・Postgres
+
+共有 CRUD から SQL 方言を切り出し、ORM 向けに MySQL / Postgres を足す（#73）。  
+**JS の接続プール／lifetime（#105 の JS 分）も本マイルストーンで載せる。**
+
+| 機能 | 内容 | 備考 |
+|------|------|------|
+| Dialect | `quoteIdent` / placeholder / insertReturning / upsert 等 | Sqlite → Postgres → MySQL の順 |
+| 既存 SQLite アダプタ | SqliteDialect へ移行し回帰テスト緑 | 破壊的変更を避ける |
+| Postgres | 少なくとも 1 ORM（Prisma または Drizzle）で同等契約 | |
+| MySQL | Dialect + RETURNING 代替を含む同等テスト | **#43 着手ゲート** |
+| JS プール | #105 相当を MySQL / Postgres 経路で | SQLite / libSQL は no-op 可 |
+| 設計 | #73 Issue 本文 | TypeORM は v0.11.0（#43） |
+
+**対象外（v0.10.0）:** TypeORM アダプタ本体（→ #43）、PHP、契約語彙の破壊的変更
+
+---
+
+## v0.11.0 — TypeORM adapter / coverage
+
+| 機能 | 内容 | 備考 |
+|------|------|------|
+| `@b4moss/crudian/typeorm` | `createCrud(DataSource)`。表名文字列が第一級 | peer: `typeorm` |
+| DB | SQLite + Postgres + MySQL すべて必須 | #73 MySQL 完了が前提 |
+| ランタイム | Node 24+ **と** Bun | 両方で `test:typeorm` |
+| 実装 | QueryBuilder / Repository を積極利用 | |
+| codecov | カバレッジ 75%（#96） | 本文は別途肉付け可 |
+| 設計 | [`typeorm-adapter.md`](./typeorm-adapter.md) | |
+
+**対象外（v0.11.0）:** Entity 第一級 API、関係グラフ横断 CRUD、Cloud 専用 E2E、PHP
+
+### v0.11.0 推奨実装順
+
+1. #73 MySQL 完了を確認
+2. 仕様・テスト仕様の固定（本マイルストーンの docs）
+3. `packages/js/src/typeorm` + exports / peer / scripts
+4. SQLite → Postgres → MySQL の順で契約テスト
+5. Node / Bun 両ランタイムと CI・README → 版上げ
+
+---
+
 ## 機能 × マイルストーン早見
 
-| 機能 | v0.1.0 | v0.2.0 | v0.3.0 | v0.5.0 | v0.6.0 | v0.7.0 |
-|------|:------:|:------:|:------:|:------:|:------:|:------:|
-| 共有契約・ビルダー型 | ✓ | | | | | |
-| `createCrud` / 生 `db` | ✓ | | | | | |
-| `create` / `read` / `update` / `delete` | ✓ | | | | | |
-| `search` / `list` + cursor | ✓ | | | | | |
-| 条件ビルダー（演算子・and/or） | ✓ | | | | | |
-| `transaction` | ✓ | | | | | |
-| `tsc` / `exports` / 誤 import ガード | ✓ | | | | | |
-| Core のインメモリテスト | ✓ | | | | | |
-| `upsert` / `duplicate` | | ✓ | | | | |
-| `bulk*` | | ✓ | | | | |
-| Extended のインメモリテスト | | ✓ | | | | |
-| テンプレ試し食い | | △ | | | | |
-| drizzle / prisma | | | ✓ | | | |
-| `count` / `SearchResult.total` | | | | ✓ | | |
-| libsql（`@libsql/client`） | | | | | ✓ | |
-| Go gorm（SQLite）/ libsql | | | | | | ✓ |
+| 機能 | v0.1.0 | v0.2.0 | v0.3.0 | v0.5.0 | v0.6.0 | v0.7.0 | v0.9.0 |
+|------|:------:|:------:|:------:|:------:|:------:|:------:|:------:|
+| 共有契約・ビルダー型 | ✓ | | | | | | |
+| `createCrud` / 生 `db` | ✓ | | | | | | |
+| `create` / `read` / `update` / `delete` | ✓ | | | | | | |
+| `search` / `list` + cursor | ✓ | | | | | | |
+| 条件ビルダー（演算子・and/or） | ✓ | | | | | | |
+| `transaction` | ✓ | | | | | | |
+| `tsc` / `exports` / 誤 import ガード | ✓ | | | | | | |
+| Core のインメモリテスト | ✓ | | | | | | |
+| `upsert` / `duplicate` | | ✓ | | | | | |
+| `bulk*` | | ✓ | | | | | |
+| Extended のインメモリテスト | | ✓ | | | | | |
+| テンプレ試し食い | | △ | | | | | |
+| drizzle / prisma | | | ✓ | | | | |
+| `count` / `SearchResult.total` | | | | ✓ | | | |
+| libsql（`@libsql/client`） | | | | | ✓ | | |
+| Go gorm（SQLite）/ libsql | | | | | | ✓ | |
+| `exists` / `Exists` | | | | | | | ✓ |
+| Go `PoolOptions` / `ApplyPool`（GORM 適用） | | | | | | | ✓ |
 
 △ = 推奨（必須にするかは未決）
 
@@ -203,6 +249,10 @@ JS 契約を Go へ移植する（#48）。**Go の公開初版は `0.7.0`**（`
 | **v0.5.0** | #47 `count` / `SearchResult.total` |
 | **v0.6.0** | #42 libSQL アダプタ（`@b4moss/crudian/libsql`） |
 | **v0.7.0** | #48 Go モジュール化（gorm SQLite / libsql） |
+| **v0.9.0** | #106 `exists` / `Exists`（boolean 糖衣） |
+| | #105 DB 接続プール／lifetime（Go/GORM 先行。JS は #73） |
 | **v0.4.0** | #44 Docker / Dev Containers（全ランタイム 1 コンテナ + 実 DB E2E） |
+| **v0.10.0** | #73 Dialect / MySQL・Postgres（JS プール含む） |
+| **v0.11.0** | #43 TypeORM アダプタ / #96 codecov 75% |
 
 クローズ済み（方針変更により機能 Issue へ内包）: #10 / #11

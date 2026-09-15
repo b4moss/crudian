@@ -238,6 +238,15 @@ crud.count("items") // 5
 crud.count("items", { where: where().eq("name", "n0") }) // 1
 ```
 
+### `exists(table, query?)` → boolean
+
+Whether any row matches (`CountQuery` shape). Does not return a count. Prefer this over `count(...) > 0` when you only need presence (e.g. email already registered).
+
+```ts
+crud.exists("items") // true if the table has any row
+crud.exists("items", { where: where().eq("name", "n0") }) // true / false
+```
+
 ### `upsert(table, cols)` → row
 
 Conflict target is primary key `id`. Inserts or updates; returns the row. `id` is required in `cols`.
@@ -384,6 +393,7 @@ Nestable `and` / `or`. Empty `in([])` is rejected.
 | Pagination | cursor on `id` ASC only (no offset) |
 | `columns` | optional on `read` / `search` / `list`; omit → `*` |
 | `search.total` / `count` | full where count; not page length |
+| `exists` | boolean presence; same input as `count`; use instead of `count > 0` when you only need yes/no |
 | Errors | minimal `CrudianError`; other errors propagate from the driver |
 | Identifiers | string required; no format validation |
 | Out of scope | relations, migrations, full-text search, ORM models |

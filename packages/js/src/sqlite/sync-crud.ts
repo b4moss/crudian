@@ -44,6 +44,7 @@ export type SyncSqliteCrud<TDb> = {
   search<T extends Row = Row>(table: string, query?: SearchQuery): SearchResult<T>
   list<T extends Row = Row>(table: string, query?: SearchQuery): SearchResult<T>
   count(table: string, query?: CountQuery): number
+  exists(table: string, query?: CountQuery): boolean
   transaction<T>(fn: () => T): T
 }
 
@@ -252,6 +253,18 @@ export function createSyncSqliteCrud<TDb>(
         (where.sql ? ` WHERE ${where.sql}` : "")
       const row = ex.get(sql, where.args)
       return Number(row?.row_count ?? 0)
+    },
+
+    exists(table: string, query: CountQuery = {}): boolean {
+      assertString(table, "table")
+      ensurePkColumn(table)
+      const tbl = quoteIdent(table)
+      const where = compileWhere(resolveWhere(query.where))
+      const sql =
+        `SELECT 1 AS ${quoteIdent("ok")} FROM ${tbl}` +
+        (where.sql ? ` WHERE ${where.sql}` : "") +
+        ` LIMIT 1`
+      return ex.get(sql, where.args) != null
     },
 
     upsert<T extends Row = Row>(table: string, cols: Record<string, unknown>): T {

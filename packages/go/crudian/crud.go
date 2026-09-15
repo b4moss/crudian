@@ -197,6 +197,30 @@ func (c *Crud) Count(ctx context.Context, table string, query CountQuery) (int64
 	return toInt64(row["row_count"]), nil
 }
 
+func (c *Crud) Exists(ctx context.Context, table string, query ExistsQuery) (bool, error) {
+	tbl, err := AssertString(table, "table")
+	if err != nil {
+		return false, err
+	}
+	if err := c.ensurePKColumn(ctx, tbl); err != nil {
+		return false, err
+	}
+	where, err := compileWhere(c.d, resolveWhere(query.Where))
+	if err != nil {
+		return false, err
+	}
+	sql := "SELECT 1 AS " + c.d.QuoteIdent("ok") + " FROM " + c.d.QuoteIdent(tbl)
+	if where.SQL != "" {
+		sql += " WHERE " + where.SQL
+	}
+	sql += " LIMIT 1"
+	row, err := c.ex.Get(ctx, sql, where.Args...)
+	if err != nil {
+		return false, err
+	}
+	return row != nil, nil
+}
+
 func (c *Crud) Search(ctx context.Context, table string, query SearchQuery) (SearchResult, error) {
 	tbl, err := AssertString(table, "table")
 	if err != nil {

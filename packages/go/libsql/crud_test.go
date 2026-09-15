@@ -244,6 +244,51 @@ func TestSearchListCount(t *testing.T) {
 	}
 }
 
+func TestExists(t *testing.T) {
+	ctx := context.Background()
+	crud := mustCreateCrud(t, openDB(t))
+
+	empty, err := crud.Exists(ctx, "items", crudian.ExistsQuery{})
+	if err != nil || empty {
+		t.Fatalf("empty exists: %v %v", empty, err)
+	}
+
+	if _, err := crud.Create(ctx, "items", crudian.Row{"name": "a", "score": 1}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := crud.Create(ctx, "items", crudian.Row{"name": "b", "score": 2}); err != nil {
+		t.Fatal(err)
+	}
+
+	okAny, err := crud.Exists(ctx, "items", crudian.ExistsQuery{})
+	if err != nil || !okAny {
+		t.Fatalf("any exists: %v %v", okAny, err)
+	}
+	hit, err := crud.Exists(ctx, "items", crudian.ExistsQuery{Where: crudian.Where().Eq("name", "a")})
+	if err != nil || !hit {
+		t.Fatalf("hit: %v %v", hit, err)
+	}
+	miss, err := crud.Exists(ctx, "items", crudian.ExistsQuery{Where: crudian.Where().Eq("name", "missing")})
+	if err != nil || miss {
+		t.Fatalf("miss: %v %v", miss, err)
+	}
+
+	cnt, err := crud.Count(ctx, "items", crudian.CountQuery{Where: crudian.Where().Eq("name", "a")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hit != (cnt > 0) {
+		t.Fatalf("exists vs count: exists=%v count=%d", hit, cnt)
+	}
+
+	if _, err := crud.Exists(ctx, "", crudian.ExistsQuery{}); err == nil {
+		t.Fatal("empty table name should fail")
+	}
+	if _, err := crud.Exists(ctx, "items", crudian.ExistsQuery{Where: crudian.Where().In("name", []any{})}); err == nil {
+		t.Fatal("empty in should fail")
+	}
+}
+
 func TestExtendedWrites(t *testing.T) {
 	ctx := context.Background()
 	crud := mustCreateCrud(t, openDB(t))
@@ -362,5 +407,30 @@ func toInt64(v any) int64 {
 		return int64(n)
 	default:
 		return 0
+	}
+}
+
+func TestPoolOptionsNoop(t *testing.T) {
+	ctx := context.Background()
+	db := openDB(t)
+
+	before := db.Stats().MaxOpenConnections
+	maxOpen := 9
+	crud, err := libsqlcrud.CreateCrud(db, crudian.Options{
+		Pool: &crudian.PoolOptions{MaxOpenConns: &maxOpen},
+	})
+	if err != nil {
+		t.Fatalf("CreateCrud with pool: %v", err)
+	}
+	// libSQL CreateCrud must not apply pool settings.
+	if got := crud.DB.Stats().MaxOpenConnections; got != before {
+		t.Fatalf("pool should be no-op: before=%d after=%d", before, got)
+	}
+	if _, err := crud.Create(ctx, "items", crudian.Row{"name": "noop", "score": 1}); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	cnt, err := crud.Count(ctx, "items", crudian.CountQuery{})
+	if err != nil || cnt != 1 {
+		t.Fatalf("count: %d %v", cnt, err)
 	}
 }

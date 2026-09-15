@@ -36,6 +36,11 @@ type CountQuery struct {
 	Where *WhereBuilder
 }
 
+// ExistsQuery checks whether any matching row exists.
+type ExistsQuery struct {
+	Where *WhereBuilder
+}
+
 // UpdateQuery requires Where.
 type UpdateQuery struct {
 	Where *WhereBuilder
