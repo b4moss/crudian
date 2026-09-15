@@ -14,6 +14,8 @@ type Crud struct {
 }
 
 // CreateCrud injects an existing *sql.DB. Does not open connections.
+// Options.Pool is accepted for API symmetry with GORM but is intentionally ignored
+// (SQLite / libSQL are single-connection oriented; callers may still call crudian.ApplyPool).
 func CreateCrud(db *sql.DB, opts ...crudian.Options) (*Crud, error) {
 	if db == nil {
 		return nil, crudian.NewError("db is required")
