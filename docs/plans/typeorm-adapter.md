@@ -160,7 +160,9 @@ Node.js / Bun 向けに TypeORM アダプタ `@b4moss/crudian/typeorm` を追加
 
 ### 着手条件
 
-- [ ] #73 が MySQL まで完了していること
+- [x] #73 が MySQL まで完了していること（[`docs/tests/v0.10.0.md`](../tests/v0.10.0.md)）
+
+受け入れの正: [`docs/tests/v0.11.0.md`](../tests/v0.11.0.md)。
 
 ## スコープ（このイシュー）
 

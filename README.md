@@ -28,6 +28,7 @@ npm install @b4moss/crudian
 | `@b4moss/crudian/drizzle` | Drizzle + better-sqlite3 (sync, SQLite) |
 | `@b4moss/crudian/prisma` | Prisma (async; SQLite / Postgres / MySQL via `dialect`) |
 | `@b4moss/crudian/libsql` | `@libsql/client` (async, SQLite-compatible) |
+| `@b4moss/crudian/typeorm` | TypeORM `DataSource` (async; SQLite / Postgres / MySQL) |
 
 Full method samples: [`packages/js/README.md`](./packages/js/README.md).
 
