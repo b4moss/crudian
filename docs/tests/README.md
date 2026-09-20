@@ -17,6 +17,7 @@
 | v0.8.0 | [v0.8.0.md](./v0.8.0.md)（offset pagination / #90、可変 PK / #72） |
 | v0.9.0 | [v0.9.0.md](./v0.9.0.md)（`exists` / #106、接続プール／lifetime / #105） |
 | v0.10.0 | [v0.10.0.md](./v0.10.0.md)（Dialect / MySQL・Postgres / #73、JS プール） |
+| v0.11.0 | [v0.11.0.md](./v0.11.0.md)（TypeORM / #43、codecov 75% / #96） |
 
 戻る: [../main.md](../main.md)
 

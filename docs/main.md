@@ -156,6 +156,7 @@ const crud = createCrud(db)
 | **v0.8.0** | `search` / `list` の offset pagination と `paging` 切替（デフォルト `"offset"`。#90）。JS 全アダプタ + Go |
 | **v0.9.0** | `exists` / `Exists`（boolean 糖衣。#106）。Go 接続プール／lifetime（GORM 適用・libSQL no-op。#105。JS は #73 / v0.10.0） |
 | **v0.10.0** | Dialect / MySQL・Postgres（#73）。JS Prisma + Go GORM。JS プール文書化（#105 連動）。受け入れ: [`docs/tests/v0.10.0.md`](./tests/v0.10.0.md) |
+| **v0.11.0** | TypeORM アダプタ（#43）+ codecov 75%（#96）。受け入れ: [`docs/tests/v0.11.0.md`](./tests/v0.11.0.md) |
 
 ## バージョン方針
 
