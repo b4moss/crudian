@@ -30,4 +30,5 @@ export type {
   UpdateQuery,
   DuplicateQuery,
   CreateCrudOptions,
+  CreateCrudDialect,
 } from "./types.js"

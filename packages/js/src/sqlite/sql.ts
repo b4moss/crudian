@@ -1,14 +1,15 @@
 import {
   CrudianError,
-  assertString,
   isWhereBuilder,
   type WhereInput,
   type WhereNode,
 } from "../index.js"
+import type { Dialect } from "../dialect/types.js"
+import { sqliteDialect } from "../dialect/sqlite.js"
 
+/** @deprecated Prefer dialect.quoteIdent; kept for local helper call sites. */
 export function quoteIdent(name: string): string {
-  assertString(name, "identifier")
-  return `"${name.replaceAll('"', '""')}"`
+  return sqliteDialect.quoteIdent(name)
 }
 
 export function resolveWhere(input: WhereInput | undefined): WhereNode | undefined {
@@ -17,49 +18,97 @@ export function resolveWhere(input: WhereInput | undefined): WhereNode | undefin
   return input
 }
 
-export function compileWhere(node: WhereNode | undefined): { sql: string; args: unknown[] } {
-  if (!node) return { sql: "", args: [] }
+export type CompiledWhere = {
+  sql: string
+  args: unknown[]
+  /** Next 1-based placeholder index after this fragment. */
+  nextIndex: number
+}
+
+/**
+ * Compile a where AST using dialect placeholders.
+ * @param startIndex 1-based index for the first placeholder in this fragment.
+ */
+export function compileWhere(
+  dialect: Dialect,
+  node: WhereNode | undefined,
+  startIndex = 1,
+): CompiledWhere {
+  if (!node) return { sql: "", args: [], nextIndex: startIndex }
 
   if (node.type === "and" || node.type === "or") {
-    if (node.children.length === 0) return { sql: "", args: [] }
+    if (node.children.length === 0) return { sql: "", args: [], nextIndex: startIndex }
     const parts: string[] = []
     const args: unknown[] = []
+    let idx = startIndex
     for (const child of node.children) {
-      const compiled = compileWhere(child)
+      const compiled = compileWhere(dialect, child, idx)
       if (!compiled.sql) continue
       parts.push(`(${compiled.sql})`)
       args.push(...compiled.args)
+      idx = compiled.nextIndex
     }
-    if (parts.length === 0) return { sql: "", args: [] }
-    if (parts.length === 1) return { sql: parts[0]!.slice(1, -1), args }
+    if (parts.length === 0) return { sql: "", args: [], nextIndex: startIndex }
+    if (parts.length === 1) {
+      return { sql: parts[0]!.slice(1, -1), args, nextIndex: idx }
+    }
     const joiner = node.type === "and" ? " AND " : " OR "
-    return { sql: parts.join(joiner), args }
+    return { sql: parts.join(joiner), args, nextIndex: idx }
   }
 
   if (node.type !== "cond") {
     throw new CrudianError("invalid where node")
   }
 
-  const col = quoteIdent(node.column)
+  const col = dialect.quoteIdent(node.column)
+  let idx = startIndex
   switch (node.op) {
     case "eq":
-      return { sql: `${col} = ?`, args: [node.value] }
+      return {
+        sql: `${col} = ${dialect.placeholder(idx)}`,
+        args: [node.value],
+        nextIndex: idx + 1,
+      }
     case "ne":
-      return { sql: `${col} <> ?`, args: [node.value] }
+      return {
+        sql: `${col} <> ${dialect.placeholder(idx)}`,
+        args: [node.value],
+        nextIndex: idx + 1,
+      }
     case "lt":
-      return { sql: `${col} < ?`, args: [node.value] }
+      return {
+        sql: `${col} < ${dialect.placeholder(idx)}`,
+        args: [node.value],
+        nextIndex: idx + 1,
+      }
     case "gt":
-      return { sql: `${col} > ?`, args: [node.value] }
+      return {
+        sql: `${col} > ${dialect.placeholder(idx)}`,
+        args: [node.value],
+        nextIndex: idx + 1,
+      }
     case "lte":
-      return { sql: `${col} <= ?`, args: [node.value] }
+      return {
+        sql: `${col} <= ${dialect.placeholder(idx)}`,
+        args: [node.value],
+        nextIndex: idx + 1,
+      }
     case "gte":
-      return { sql: `${col} >= ?`, args: [node.value] }
+      return {
+        sql: `${col} >= ${dialect.placeholder(idx)}`,
+        args: [node.value],
+        nextIndex: idx + 1,
+      }
     case "like":
-      return { sql: `${col} LIKE ?`, args: [node.value] }
+      return {
+        sql: `${col} LIKE ${dialect.placeholder(idx)}`,
+        args: [node.value],
+        nextIndex: idx + 1,
+      }
     case "isNull":
-      return { sql: `${col} IS NULL`, args: [] }
+      return { sql: `${col} IS NULL`, args: [], nextIndex: idx }
     case "isNotNull":
-      return { sql: `${col} IS NOT NULL`, args: [] }
+      return { sql: `${col} IS NOT NULL`, args: [], nextIndex: idx }
     case "in": {
       const values = node.value
       if (!Array.isArray(values)) {
@@ -68,8 +117,8 @@ export function compileWhere(node: WhereNode | undefined): { sql: string; args: 
       if (values.length === 0) {
         throw new CrudianError("in requires a non-empty array")
       }
-      const placeholders = values.map(() => "?").join(", ")
-      return { sql: `${col} IN (${placeholders})`, args: values }
+      const placeholders = values.map(() => dialect.placeholder(idx++)).join(", ")
+      return { sql: `${col} IN (${placeholders})`, args: values, nextIndex: idx }
     }
     default:
       throw new CrudianError(`unknown op: ${(node as { op: string }).op}`)

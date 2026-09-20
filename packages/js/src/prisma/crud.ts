@@ -1,6 +1,7 @@
 import { CrudianError, type CreateCrudOptions } from "../index.js"
+import { resolveDialect } from "../dialect/index.js"
 import {
-  createAsyncSqliteCrud,
+  createAsyncCrud,
   type AsyncSqliteCrud,
 } from "../sqlite/async-crud.js"
 import type { Row } from "../types.js"
@@ -23,8 +24,9 @@ function normalizeRow(row: Row): Row {
 }
 
 /**
- * Create a Crud bound to a PrismaClient (SQLite).
+ * Create a Crud bound to a PrismaClient.
  * Methods are async. The injected client is exposed as `crud.db`.
+ * Pass `options.dialect` for Postgres / MySQL (`"sqlite"` default).
  */
 export function createCrud(
   client: PrismaLikeClient,
@@ -43,8 +45,9 @@ export function createCrud(
   }
 
   let active: PrismaLikeClient = client
+  const dialect = resolveDialect(options?.dialect)
 
-  return createAsyncSqliteCrud(
+  return createAsyncCrud(
     client,
     {
       async run(sql, args = []) {
@@ -73,6 +76,7 @@ export function createCrud(
         })
       },
     },
+    dialect,
     options,
   )
 }

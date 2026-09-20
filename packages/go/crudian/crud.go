@@ -16,7 +16,11 @@ type Crud struct {
 // NewCrud wires an executor and dialect.
 func NewCrud(ex Executor, d Dialect, opts ...Options) *Crud {
 	if d == nil {
-		d = SqliteDialect{}
+		if resolved, err := resolveOptionsDialect(opts); err == nil {
+			d = resolved
+		} else {
+			d = SqliteDialect{}
+		}
 	}
 	return &Crud{
 		ex:   ex,
@@ -30,7 +34,8 @@ func (c *Crud) ensurePKColumn(ctx context.Context, table string) error {
 	if _, ok := c.pkOK[table]; ok {
 		return nil
 	}
-	rows, err := c.ex.All(ctx, "PRAGMA table_info("+c.d.QuoteIdent(table)+")")
+	sql, args := c.d.DescribeColumns(table)
+	rows, err := c.ex.All(ctx, sql, args...)
 	if err != nil {
 		return err
 	}
@@ -76,11 +81,44 @@ func (c *Crud) Create(ctx context.Context, table string, cols Row) (Row, error) 
 		ph[i] = c.d.Placeholder(i + 1)
 		args[i] = cols[k]
 	}
-	sql := fmt.Sprintf(
-		"INSERT INTO %s (%s) VALUES (%s) RETURNING *",
+	if c.d.SupportsInsertReturning() {
+		sql := fmt.Sprintf(
+			"INSERT INTO %s (%s) VALUES (%s) RETURNING *",
+			qTbl, joinComma(colSQL), joinComma(ph),
+		)
+		row, err := c.ex.Get(ctx, sql, args...)
+		if err != nil {
+			return nil, err
+		}
+		if row == nil {
+			return nil, NewError("expected row object")
+		}
+		return row, nil
+	}
+	_, err = c.ex.Run(ctx, fmt.Sprintf(
+		"INSERT INTO %s (%s) VALUES (%s)",
 		qTbl, joinComma(colSQL), joinComma(ph),
+	), args...)
+	if err != nil {
+		return nil, err
+	}
+	var pkValue any
+	if v, ok := cols[c.pk]; ok {
+		pkValue = v
+	} else {
+		idRow, err := c.ex.Get(ctx, c.d.LastInsertIDSQL())
+		if err != nil {
+			return nil, err
+		}
+		if idRow == nil {
+			return nil, NewError("expected row object")
+		}
+		pkValue = idRow["id"]
+	}
+	row, err := c.ex.Get(ctx,
+		"SELECT * FROM "+qTbl+" WHERE "+c.d.QuoteIdent(c.pk)+" = "+c.d.Placeholder(1),
+		pkValue,
 	)
-	row, err := c.ex.Get(ctx, sql, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +136,7 @@ func (c *Crud) Read(ctx context.Context, table string, query ReadQuery) (Row, er
 	if err := c.ensurePKColumn(ctx, tbl); err != nil {
 		return nil, err
 	}
-	where, err := compileWhere(c.d, resolveWhere(query.Where))
+	where, err := compileWhere(c.d, resolveWhere(query.Where), 1)
 	if err != nil {
 		return nil, err
 	}
@@ -124,19 +162,19 @@ func (c *Crud) Update(ctx context.Context, table string, cols Row, query UpdateQ
 	if cols == nil || len(cols) == 0 {
 		return nil, NewError("cols must not be empty")
 	}
-	where, err := compileWhere(c.d, resolveWhere(query.Where))
+	keys := sortedKeys(cols)
+	sets := make([]string, len(keys))
+	args := make([]any, 0, len(keys))
+	for i, k := range keys {
+		sets[i] = c.d.QuoteIdent(k) + " = " + c.d.Placeholder(i+1)
+		args = append(args, cols[k])
+	}
+	where, err := compileWhere(c.d, resolveWhere(query.Where), len(keys)+1)
 	if err != nil {
 		return nil, err
 	}
 	if where.SQL == "" {
 		return nil, NewError("update requires where")
-	}
-	keys := sortedKeys(cols)
-	sets := make([]string, len(keys))
-	args := make([]any, 0, len(keys)+len(where.Args))
-	for i, k := range keys {
-		sets[i] = c.d.QuoteIdent(k) + " = " + c.d.Placeholder(i+1)
-		args = append(args, cols[k])
 	}
 	args = append(args, where.Args...)
 	qTbl := c.d.QuoteIdent(tbl)
@@ -147,7 +185,11 @@ func (c *Crud) Update(ctx context.Context, table string, cols Row, query UpdateQ
 	if n == 0 {
 		return nil, nil
 	}
-	return c.ex.Get(ctx, "SELECT * FROM "+qTbl+" WHERE "+where.SQL+" LIMIT 1", where.Args...)
+	fetchWhere, err := compileWhere(c.d, resolveWhere(query.Where), 1)
+	if err != nil {
+		return nil, err
+	}
+	return c.ex.Get(ctx, "SELECT * FROM "+qTbl+" WHERE "+fetchWhere.SQL+" LIMIT 1", fetchWhere.Args...)
 }
 
 func (c *Crud) Delete(ctx context.Context, table string, query DeleteQuery) (int64, error) {
@@ -161,7 +203,7 @@ func (c *Crud) Delete(ctx context.Context, table string, query DeleteQuery) (int
 	if err := c.requireWhere(query.Where, "delete"); err != nil {
 		return 0, err
 	}
-	where, err := compileWhere(c.d, resolveWhere(query.Where))
+	where, err := compileWhere(c.d, resolveWhere(query.Where), 1)
 	if err != nil {
 		return 0, err
 	}
@@ -179,7 +221,7 @@ func (c *Crud) Count(ctx context.Context, table string, query CountQuery) (int64
 	if err := c.ensurePKColumn(ctx, tbl); err != nil {
 		return 0, err
 	}
-	where, err := compileWhere(c.d, resolveWhere(query.Where))
+	where, err := compileWhere(c.d, resolveWhere(query.Where), 1)
 	if err != nil {
 		return 0, err
 	}
@@ -205,7 +247,7 @@ func (c *Crud) Exists(ctx context.Context, table string, query ExistsQuery) (boo
 	if err := c.ensurePKColumn(ctx, tbl); err != nil {
 		return false, err
 	}
-	where, err := compileWhere(c.d, resolveWhere(query.Where))
+	where, err := compileWhere(c.d, resolveWhere(query.Where), 1)
 	if err != nil {
 		return false, err
 	}
@@ -258,7 +300,7 @@ func (c *Crud) Search(ctx context.Context, table string, query SearchQuery) (Sea
 		}
 	}
 
-	where, err := compileWhere(c.d, resolveWhere(query.Where))
+	where, err := compileWhere(c.d, resolveWhere(query.Where), 1)
 	if err != nil {
 		return SearchResult{}, err
 	}
@@ -280,9 +322,10 @@ func (c *Crud) Search(ctx context.Context, table string, query SearchQuery) (Sea
 		if where.SQL != "" {
 			whereSQL = " WHERE " + where.SQL
 		}
+		idx := where.NextIndex
 		sql := "SELECT " + selectColumns(c.d, query.Columns) + " FROM " + c.d.QuoteIdent(tbl) +
-			whereSQL + " ORDER BY " + c.d.QuoteIdent(c.pk) + " ASC LIMIT " + c.d.Placeholder(len(args)+1) +
-			" OFFSET " + c.d.Placeholder(len(args)+2)
+			whereSQL + " ORDER BY " + c.d.QuoteIdent(c.pk) + " ASC LIMIT " + c.d.Placeholder(idx) +
+			" OFFSET " + c.d.Placeholder(idx+1)
 		args = append(args, limit, offset)
 		rows, err := c.ex.All(ctx, sql, args...)
 		if err != nil {
@@ -302,9 +345,11 @@ func (c *Crud) Search(ctx context.Context, table string, query SearchQuery) (Sea
 	if where.SQL != "" {
 		parts = append(parts, "("+where.SQL+")")
 	}
+	idx := where.NextIndex
 	if query.Cursor != nil {
-		parts = append(parts, c.d.QuoteIdent(c.pk)+" > "+c.d.Placeholder(len(args)+1))
+		parts = append(parts, c.d.QuoteIdent(c.pk)+" > "+c.d.Placeholder(idx))
 		args = append(args, query.Cursor)
+		idx++
 	}
 	whereSQL := ""
 	if len(parts) > 0 {
@@ -314,7 +359,7 @@ func (c *Crud) Search(ctx context.Context, table string, query SearchQuery) (Sea
 		}
 	}
 	sql := "SELECT " + selectColumns(c.d, query.Columns) + " FROM " + c.d.QuoteIdent(tbl) +
-		whereSQL + " ORDER BY " + c.d.QuoteIdent(c.pk) + " ASC LIMIT " + c.d.Placeholder(len(args)+1)
+		whereSQL + " ORDER BY " + c.d.QuoteIdent(c.pk) + " ASC LIMIT " + c.d.Placeholder(idx)
 	args = append(args, limit+1)
 	rows, err := c.ex.All(ctx, sql, args...)
 	if err != nil {
@@ -437,19 +482,19 @@ func (c *Crud) BulkUpdate(ctx context.Context, table string, cols Row, query Upd
 	if cols == nil || len(cols) == 0 {
 		return 0, NewError("cols must not be empty")
 	}
-	where, err := compileWhere(c.d, resolveWhere(query.Where))
+	keys := sortedKeys(cols)
+	sets := make([]string, len(keys))
+	args := make([]any, 0, len(keys))
+	for i, k := range keys {
+		sets[i] = c.d.QuoteIdent(k) + " = " + c.d.Placeholder(i+1)
+		args = append(args, cols[k])
+	}
+	where, err := compileWhere(c.d, resolveWhere(query.Where), len(keys)+1)
 	if err != nil {
 		return 0, err
 	}
 	if where.SQL == "" {
 		return 0, NewError("bulkUpdate requires where")
-	}
-	keys := sortedKeys(cols)
-	sets := make([]string, len(keys))
-	args := make([]any, 0, len(keys)+len(where.Args))
-	for i, k := range keys {
-		sets[i] = c.d.QuoteIdent(k) + " = " + c.d.Placeholder(i+1)
-		args = append(args, cols[k])
 	}
 	args = append(args, where.Args...)
 	return c.ex.Run(ctx, fmt.Sprintf("UPDATE %s SET %s WHERE %s", c.d.QuoteIdent(tbl), joinComma(sets), where.SQL), args...)

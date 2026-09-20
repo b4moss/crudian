@@ -251,9 +251,9 @@ JS 契約を Go へ移植する（#48）。**Go の公開初版は `0.7.0`**（`
 | **v0.6.0** | #42 libSQL アダプタ（`@b4moss/crudian/libsql`） |
 | **v0.7.0** | #48 Go モジュール化（gorm SQLite / libsql） |
 | **v0.9.0** | #106 `exists` / `Exists`（boolean 糖衣） |
-| | #105 DB 接続プール／lifetime（Go/GORM 先行。JS は #73） |
+| | #105 DB 接続プール／lifetime（Go/GORM 先行。JS は #73 / v0.10.0） |
 | **v0.4.0** | #44 Docker / Dev Containers（全ランタイム 1 コンテナ + 実 DB E2E） |
-| **v0.10.0** | #73 Dialect / MySQL・Postgres（JS プール含む） |
+| **v0.10.0** | #73 Dialect / MySQL・Postgres（JS プール含む。テスト: [`docs/tests/v0.10.0.md`](../tests/v0.10.0.md)） |
 | **v0.11.0** | #43 TypeORM アダプタ / #96 codecov 75% |
 
 クローズ済み（方針変更により機能 Issue へ内包）: #10 / #11
