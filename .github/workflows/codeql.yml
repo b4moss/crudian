@@ -1,0 +1,52 @@
+name: CodeQL
+
+# Default setup は使わず、advanced setup でトリガーを制御する。
+# 方針: main への pull_request のときだけ解析する（release 等の PR では走らない）。
+
+on:
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: codeql-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: actions
+            build-mode: none
+          - language: go
+            build-mode: autobuild
+          - language: javascript-typescript
+            build-mode: none
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@6f5948dfacef28e207b48d0905cf90c03365536d # v3.37.9
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+
+      - name: Autobuild
+        if: matrix.build-mode == 'autobuild'
+        uses: github/codeql-action/autobuild@6f5948dfacef28e207b48d0905cf90c03365536d # v3.37.9
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@6f5948dfacef28e207b48d0905cf90c03365536d # v3.37.9
+        with:
+          category: "/language:${{ matrix.language }}"
