@@ -61,10 +61,21 @@ jobs:
           VERSION: ${{ steps.decide.outputs.version }}
         run: |
           set -euo pipefail
-          gh release create "$TAG" \
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release already exists: $TAG (skip create)"
+            exit 0
+          fi
+          if ! out="$(gh release create "$TAG" \
             --title "Go module v${VERSION}" \
-            --notes "Go module \`github.com/b4moss/crudian/go\` v${VERSION} (GORM SQLite + libSQL adapters)." \
-            --verify-tag
+            --notes "Go module \`github.com/b4moss/crudian/go\` v${VERSION} (GORM SQLite + libSQL + Postgres/MySQL)." \
+            --verify-tag 2>&1)"; then
+            echo "$out"
+            if echo "$out" | grep -qi 'already exists'; then
+              echo "Release appeared concurrently; treating as success."
+              exit 0
+            fi
+            exit 1
+          fi
 
       - name: Ping Go module proxy
         if: steps.decide.outputs.skip != 'true'
