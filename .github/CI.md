@@ -50,6 +50,7 @@ Expected for a tree whose `package.json` version is **already on npm**: decide s
 | Workflow | Trigger | Scope |
 |----------|---------|--------|
 | `CI` | PR → `develop` / `dev-v*`; push → those + `main` | Gate scripts + lint/tests per touched package |
+| `CodeQL` | PR → `main` only | Advanced setup（default setup は無効）。`release` 等の PR では走らない |
 | `Docker image` | PR when `docker/**` / `.devcontainer/**` change | Image build + runtime check (not E2E) |
 | `Publish npm` | push → `release` | `@b4moss/crudian` when tag/`package.json` warrant |
 | `Publish Go` | push → `release` or tag `packages/go/v*` | Go module release + proxy ping |
@@ -60,7 +61,8 @@ Expected for a tree whose `package.json` version is **already on npm**: decide s
 - **Gate scripts job:** `bash .github/tests/run.sh` when `gates=true`.
 - **Docs-only / other-only PRs:** package and gate jobs are skipped; gate job `CI result` still succeeds.
 - **Lint:** JS = `tsc --noEmit`; Go = `gofmt -l` + `go vet`.
-- **Tests:** JS bun-sqlite (+ build), JS drizzle/prisma/libsql, Go `go test ./...`.
+- **Tests:** JS bun-sqlite (+ build + coverage upload), JS drizzle/prisma/libsql (+ `c8` coverage upload), Go `go test -coverpkg=./... ./...` (+ coverage upload).
+- **Codecov:** project target **75%**（[`codecov.yml`](../codecov.yml)、#96）。status は informational（CI は落とさない）。Go は `-coverpkg=./...` でアダプタ経由のコアを計上。JS は bun-sqlite と node-adapters の双方を upload。
 - **Ancestor skip (not GHA cache):** each package job runs `.github/scripts/ci-skip-if-ancestor-passed.sh` with:
   - exact check-run name (e.g. `test packages/go (gorm / libsql)`)
   - identity paths: package dir + `ci.yml` + the skip script  
