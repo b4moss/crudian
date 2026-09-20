@@ -97,6 +97,7 @@ the client you inject:
 | Adapter | How to set pool |
 |---------|-----------------|
 | **Prisma** | Prisma datasource / connection URL params / engine pool settings (caller-owned). See Prisma docs for your provider. |
+| **TypeORM** | `DataSource` options (caller-owned). |
 | **bun-sqlite / drizzle (sqlite) / libsql** | No pool settings needed (no-op). |
 
 Optional type for docs / future drivers: `PoolOptions` from `@b4moss/crudian`
