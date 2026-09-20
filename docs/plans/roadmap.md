@@ -172,14 +172,15 @@ JS 契約を Go へ移植する（#48）。**Go の公開初版は `0.7.0`**（`
 
 | 機能 | 内容 | 備考 |
 |------|------|------|
-| Dialect | `quoteIdent` / placeholder / insertReturning / upsert 等 | Sqlite → Postgres → MySQL の順 |
+| Dialect | `quoteIdent` / placeholder / insert 後行取得 / 列記述 | Sqlite → Postgres → MySQL の順。upsert は当面アプリ層のまま |
 | 既存 SQLite アダプタ | SqliteDialect へ移行し回帰テスト緑 | 破壊的変更を避ける |
-| Postgres | 少なくとも 1 ORM（Prisma または Drizzle）で同等契約 | |
+| Postgres | 少なくとも 1 ORM（**Prisma**）+ Go GORM で同等契約 | Drizzle PG subpath は本版対象外 |
 | MySQL | Dialect + RETURNING 代替を含む同等テスト | **#43 着手ゲート** |
-| JS プール | #105 相当を MySQL / Postgres 経路で | SQLite / libSQL は no-op 可 |
+| JS プール | #105 相当を MySQL / Postgres 経路で文書化（Prisma は呼び出し側設定が本体） | SQLite / libSQL は no-op 可 |
+| テスト | [`docs/tests/v0.10.0.md`](../tests/v0.10.0.md) | |
 | 設計 | #73 Issue 本文 | TypeORM は v0.11.0（#43） |
 
-**対象外（v0.10.0）:** TypeORM アダプタ本体（→ #43）、PHP、契約語彙の破壊的変更
+**対象外（v0.10.0）:** TypeORM アダプタ本体（→ #43）、PHP、契約語彙の破壊的変更、Drizzle の Postgres/MySQL subpath
 
 ---
 
@@ -250,9 +251,9 @@ JS 契約を Go へ移植する（#48）。**Go の公開初版は `0.7.0`**（`
 | **v0.6.0** | #42 libSQL アダプタ（`@b4moss/crudian/libsql`） |
 | **v0.7.0** | #48 Go モジュール化（gorm SQLite / libsql） |
 | **v0.9.0** | #106 `exists` / `Exists`（boolean 糖衣） |
-| | #105 DB 接続プール／lifetime（Go/GORM 先行。JS は #73） |
+| | #105 DB 接続プール／lifetime（Go/GORM 先行。JS は #73 / v0.10.0） |
 | **v0.4.0** | #44 Docker / Dev Containers（全ランタイム 1 コンテナ + 実 DB E2E） |
-| **v0.10.0** | #73 Dialect / MySQL・Postgres（JS プール含む） |
+| **v0.10.0** | #73 Dialect / MySQL・Postgres（JS プール含む。テスト: [`docs/tests/v0.10.0.md`](../tests/v0.10.0.md)） |
 | **v0.11.0** | #43 TypeORM アダプタ / #96 codecov 75% |
 
 クローズ済み（方針変更により機能 Issue へ内包）: #10 / #11

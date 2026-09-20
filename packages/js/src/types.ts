@@ -56,8 +56,16 @@ export type DuplicateQuery = {
   overrides?: Record<string, unknown>
 }
 
+/** SQL dialect for adapters that support more than SQLite (e.g. Prisma). */
+export type CreateCrudDialect = "sqlite" | "postgres" | "mysql"
+
 /** Options for `createCrud(db, options?)`. */
 export type CreateCrudOptions = {
   /** Primary key column name. Default: `"id"`. */
   pk?: string
+  /**
+   * SQL dialect. Default: `"sqlite"`.
+   * Used by Prisma (and future multi-DB adapters). SQLite-only adapters ignore this.
+   */
+  dialect?: CreateCrudDialect
 }

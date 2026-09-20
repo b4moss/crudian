@@ -24,10 +24,10 @@ npm install @b4moss/crudian
 
 | Subpath | Backend |
 |---------|---------|
-| `@b4moss/crudian/bun-sqlite` | Bun `bun:sqlite` (sync) |
-| `@b4moss/crudian/drizzle` | Drizzle + better-sqlite3 (sync) |
-| `@b4moss/crudian/prisma` | Prisma (async) |
-| `@b4moss/crudian/libsql` | `@libsql/client` (async) |
+| `@b4moss/crudian/bun-sqlite` | Bun `bun:sqlite` (sync, SQLite) |
+| `@b4moss/crudian/drizzle` | Drizzle + better-sqlite3 (sync, SQLite) |
+| `@b4moss/crudian/prisma` | Prisma (async; SQLite / Postgres / MySQL via `dialect`) |
+| `@b4moss/crudian/libsql` | `@libsql/client` (async, SQLite-compatible) |
 
 Full method samples: [`packages/js/README.md`](./packages/js/README.md).
 
@@ -47,11 +47,11 @@ go get github.com/b4moss/crudian/go@v0.7.0
 
 | Import path | Role |
 |-------------|------|
-| `github.com/b4moss/crudian/go/gorm` | GORM adapter (**SQLite today**; MySQL/Postgres later) |
-| `github.com/b4moss/crudian/go/libsql` | libSQL (`database/sql`) adapter |
-| `github.com/b4moss/crudian/go/crudian` | Shared contract, `Where`, Dialect, CRUD |
+| `github.com/b4moss/crudian/go/gorm` | GORM adapter (SQLite / Postgres / MySQL) |
+| `github.com/b4moss/crudian/go/libsql` | libSQL (`database/sql`) adapter (SQLite-compatible) |
+| `github.com/b4moss/crudian/go/crudian` | Shared contract, `Where`, Dialect, CRUD, Pool |
 
-Usage, drivers, and API notes: [`packages/go/README.md`](./packages/go/README.md). Today’s Go adapters target **SQLite only**; **MySQL and PostgreSQL support is planned** on the same Dialect/CRUD surface.
+Usage, drivers, and API notes: [`packages/go/README.md`](./packages/go/README.md). Dialect acceptance: [`docs/tests/v0.10.0.md`](./docs/tests/v0.10.0.md).
 
 **Release:** tag `packages/go/vX.Y.Z` matching `VERSION`. Root tag `vX.Y.Z` alone does **not** publish Go. CD creates a GitHub Release and pings the module proxy; it does not upload to npm.
 

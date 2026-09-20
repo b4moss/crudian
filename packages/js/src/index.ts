@@ -30,4 +30,6 @@ export type {
   UpdateQuery,
   DuplicateQuery,
   CreateCrudOptions,
+  CreateCrudDialect,
 } from "./types.js"
+export type { PoolOptions } from "./pool.js"
