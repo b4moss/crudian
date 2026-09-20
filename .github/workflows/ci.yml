@@ -253,6 +253,14 @@ jobs:
         if: steps.skip.outputs.hit != 'true'
         run: bun run test:libsql
 
+      - name: Test typeorm (Node)
+        if: steps.skip.outputs.hit != 'true'
+        run: bun run test:typeorm
+
+      - name: Test typeorm (Bun)
+        if: steps.skip.outputs.hit != 'true'
+        run: bun run test:typeorm:bun
+
   lint-go:
     name: lint packages/go
     needs: changes

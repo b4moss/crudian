@@ -20,6 +20,7 @@ Install only the peer deps for the adapter you use:
 | `@b4moss/crudian/drizzle` | Node.js 24+ | sync | `drizzle-orm`, `better-sqlite3` |
 | `@b4moss/crudian/prisma` | Node.js 24+ | async | `@prisma/client` |
 | `@b4moss/crudian/libsql` | Node.js 24+ / Bun | async | `@libsql/client` |
+| `@b4moss/crudian/typeorm` | Node.js 24+ / Bun | async | `typeorm` |
 
 Node must not import `@b4moss/crudian/bun-sqlite` (resolves to an explicit error stub).
 
@@ -119,11 +120,39 @@ await crud.create("items", { name: "alpha", score: 1 })
 
 URL / auth token belong on the caller-created client (typically from `.env`).
 
+### TypeORM (`DataSource`) — async
+
+```ts
+import "reflect-metadata"
+import { DataSource } from "typeorm"
+import { createCrud } from "@b4moss/crudian/typeorm"
+import { where } from "@b4moss/crudian"
+
+const dataSource = new DataSource({
+  type: "better-sqlite3",
+  database: ":memory:",
+  // entities / migrations / pool: caller-owned
+})
+await dataSource.initialize()
+
+const crud = createCrud(dataSource)
+await crud.create("items", { name: "alpha", score: 1 })
+await crud.search("items", { where: where().eq("name", "alpha") })
+
+// JOIN / QueryBuilder / relation graphs → use crud.db (raw DataSource)
+```
+
+Dialect is inferred from `dataSource.options.type` (`sqlite` / `better-sqlite3` → sqlite, `postgres` → postgres, `mysql` / `mariadb` → mysql). Override with `createCrud(dataSource, { dialect: "postgres" })`.
+
+**Boundaries:** callers run migrations; crudian does single-table CRUD by table name. Relations may exist on the schema, but cross-relation CRUD is out of scope (`crud.db`). Subscribers fire only if the write path goes through TypeORM persistence hooks your app configured — treat side effects as caller-owned.
+
+Pool / lifetime: configure on the `DataSource` options (same ownership model as Prisma).
+
 ---
 
 ## API reference (all methods)
 
-Examples below use the **sync** Bun adapter. For `prisma` / `libsql`, `await` every call (same shapes).
+Examples below use the **sync** Bun adapter. For `prisma` / `libsql` / `typeorm`, `await` every call (same shapes).
 
 Assume a table:
 
@@ -407,9 +436,9 @@ Nestable `and` / `or`. Empty `in([])` is rejected.
 | Topic | Behavior |
 |-------|----------|
 | Entry | `createCrud(db, options?)` — inject a caller-owned client; exposed as `crud.db` |
-| Dialects | Shared Dialect layer: SQLite (all adapters), Postgres / MySQL via **Prisma** (`options.dialect`) |
+| Dialects | Shared Dialect layer: SQLite (all adapters), Postgres / MySQL via **Prisma** / **TypeORM** (`options.dialect` or DataSource type) |
 | Drizzle | **SQLite (better-sqlite3) only** in this line; PG/MySQL subpaths are out of scope |
-| Sync vs async | `bun-sqlite` / `drizzle` sync; `prisma` / `libsql` return `Promise`s |
+| Sync vs async | `bun-sqlite` / `drizzle` sync; `prisma` / `libsql` / `typeorm` return `Promise`s |
 | `read` / `update` / `duplicate` miss | `null` |
 | `delete` / bulk miss | `0` |
 | Upsert conflict | application-level on PK (default `id`; no SQL `ON CONFLICT`) |
@@ -417,10 +446,10 @@ Nestable `and` / `or`. Empty `in([])` is rejected.
 | `columns` | optional on `read` / `search` / `list`; omit → `*` |
 | `search.total` / `count` | full where count; not page length |
 | `exists` | boolean presence; same input as `count` |
-| Pool | caller-owned; Prisma via datasource settings; SQLite adapters no-op |
+| Pool | caller-owned; Prisma via datasource settings; TypeORM via DataSource options; SQLite adapters no-op |
 | Errors | minimal `CrudianError`; other errors propagate from the driver |
 | Identifiers | string required; no format validation |
-| Out of scope | relations, migrations, full-text search, ORM models, TypeORM (#43) |
+| Out of scope | relations graph CRUD, migrations ownership, full-text search, Entity-as-first-arg API |
 
 ## License
 
