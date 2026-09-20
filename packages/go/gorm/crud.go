@@ -14,8 +14,9 @@ type Crud struct {
 	DB *gormio.DB
 }
 
-// CreateCrud injects an existing *gorm.DB (SQLite). Does not open connections.
+// CreateCrud injects an existing *gorm.DB. Does not open connections.
 // When Options.Pool is set, settings are applied to the underlying *sql.DB via db.DB().
+// Dialect / Driver in Options selects SQL dialect (default Sqlite).
 func CreateCrud(db *gormio.DB, opts ...crudian.Options) (*Crud, error) {
 	if db == nil {
 		return nil, crudian.NewError("db is required")
@@ -29,8 +30,20 @@ func CreateCrud(db *gormio.DB, opts ...crudian.Options) (*Crud, error) {
 			return nil, err
 		}
 	}
+	var d crudian.Dialect = crudian.SqliteDialect{}
+	if len(opts) > 0 {
+		if opts[0].Dialect != nil {
+			d = opts[0].Dialect
+		} else if opts[0].Driver != "" {
+			resolved, err := crudian.ResolveDialect(opts[0].Driver)
+			if err != nil {
+				return nil, err
+			}
+			d = resolved
+		}
+	}
 	ex := &gormExecutor{db: db}
-	return &Crud{Crud: crudian.NewCrud(ex, crudian.SqliteDialect{}, opts...), DB: db}, nil
+	return &Crud{Crud: crudian.NewCrud(ex, d, opts...), DB: db}, nil
 }
 
 type gormExecutor struct {

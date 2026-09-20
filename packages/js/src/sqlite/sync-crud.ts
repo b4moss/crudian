@@ -11,8 +11,10 @@ import {
   type SearchResult,
   type UpdateQuery,
 } from "../index.js"
+import type { Dialect } from "../dialect/types.js"
+import { sqliteDialect } from "../dialect/sqlite.js"
 import { createPkGuard, resolvePk } from "./pk.js"
-import { compileWhere, quoteIdent, resolveWhere } from "./sql.js"
+import { compileWhere, resolveWhere } from "./sql.js"
 
 export type SyncSqliteExecutor = {
   run(sql: string, args?: unknown[]): { changes: number }
@@ -54,9 +56,9 @@ function requireWhere(query: { where?: unknown }, label: string) {
   }
 }
 
-function selectColumns(columns: string[] | undefined): string {
+function selectColumns(d: Dialect, columns: string[] | undefined): string {
   if (!columns || columns.length === 0) return "*"
-  return columns.map((c) => quoteIdent(c)).join(", ")
+  return columns.map((c) => d.quoteIdent(c)).join(", ")
 }
 
 function rowFromObject(value: unknown): Row {
@@ -66,13 +68,16 @@ function rowFromObject(value: unknown): Row {
   return { ...(value as Row) }
 }
 
-export function createSyncSqliteCrud<TDb>(
+/** Dialect-aware sync CRUD factory. */
+export function createSyncCrud<TDb>(
   db: TDb,
   ex: SyncSqliteExecutor,
+  dialect: Dialect,
   options?: CreateCrudOptions,
 ): SyncSqliteCrud<TDb> {
   const pk = resolvePk(options)
-  const ensurePkColumn = createPkGuard(pk, ex.get, ex.all)
+  const ensurePkColumn = createPkGuard(pk, dialect, ex.all)
+  const d = dialect
 
   const crud: SyncSqliteCrud<TDb> = {
     db,
@@ -88,17 +93,18 @@ export function createSyncSqliteCrud<TDb>(
         throw new CrudianError("cols must not be empty")
       }
 
-      const tbl = quoteIdent(table)
-      const colSql = keys.map((k) => quoteIdent(k)).join(", ")
-      const placeholders = keys.map(() => "?").join(", ")
+      const tbl = d.quoteIdent(table)
+      const colSql = keys.map((k) => d.quoteIdent(k)).join(", ")
+      let idx = 1
+      const placeholders = keys.map(() => d.placeholder(idx++)).join(", ")
       const args = keys.map((k) => cols[k])
       ex.run(`INSERT INTO ${tbl} (${colSql}) VALUES (${placeholders})`, args)
 
       const pkValue = Object.prototype.hasOwnProperty.call(cols, pk)
         ? cols[pk]
-        : Number(ex.get("SELECT last_insert_rowid() AS id")?.id)
+        : Number(ex.get(d.lastInsertIdSql())?.id)
       const row = ex.get(
-        `SELECT * FROM ${tbl} WHERE ${quoteIdent(pk)} = ?`,
+        `SELECT * FROM ${tbl} WHERE ${d.quoteIdent(pk)} = ${d.placeholder(1)}`,
         [pkValue],
       )
       return rowFromObject(row) as T
@@ -107,10 +113,10 @@ export function createSyncSqliteCrud<TDb>(
     read<T extends Row = Row>(table: string, query: ReadQuery = {}): T | null {
       assertString(table, "table")
       ensurePkColumn(table)
-      const tbl = quoteIdent(table)
-      const where = compileWhere(resolveWhere(query.where))
+      const tbl = d.quoteIdent(table)
+      const where = compileWhere(d, resolveWhere(query.where))
       const sql =
-        `SELECT ${selectColumns(query.columns)} FROM ${tbl}` +
+        `SELECT ${selectColumns(d, query.columns)} FROM ${tbl}` +
         (where.sql ? ` WHERE ${where.sql}` : "") +
         ` LIMIT 1`
       const row = ex.get(sql, where.args)
@@ -133,17 +139,22 @@ export function createSyncSqliteCrud<TDb>(
         throw new CrudianError("cols must not be empty")
       }
 
-      const tbl = quoteIdent(table)
-      const where = compileWhere(resolveWhere(query.where))
+      const tbl = d.quoteIdent(table)
+      let idx = 1
+      const sets = keys.map((k) => `${d.quoteIdent(k)} = ${d.placeholder(idx++)}`).join(", ")
+      const where = compileWhere(d, resolveWhere(query.where), idx)
       if (!where.sql) {
         throw new CrudianError("update requires where")
       }
-      const sets = keys.map((k) => `${quoteIdent(k)} = ?`).join(", ")
       const args = [...keys.map((k) => cols[k]), ...where.args]
       const result = ex.run(`UPDATE ${tbl} SET ${sets} WHERE ${where.sql}`, args)
       if (result.changes === 0) return null
 
-      const row = ex.get(`SELECT * FROM ${tbl} WHERE ${where.sql} LIMIT 1`, where.args)
+      const fetchWhere = compileWhere(d, resolveWhere(query.where))
+      const row = ex.get(
+        `SELECT * FROM ${tbl} WHERE ${fetchWhere.sql} LIMIT 1`,
+        fetchWhere.args,
+      )
       return row == null ? null : (rowFromObject(row) as T)
     },
 
@@ -151,8 +162,8 @@ export function createSyncSqliteCrud<TDb>(
       assertString(table, "table")
       ensurePkColumn(table)
       requireWhere(query, "delete")
-      const tbl = quoteIdent(table)
-      const where = compileWhere(resolveWhere(query.where))
+      const tbl = d.quoteIdent(table)
+      const where = compileWhere(d, resolveWhere(query.where))
       if (!where.sql) {
         throw new CrudianError("delete requires where")
       }
@@ -186,8 +197,8 @@ export function createSyncSqliteCrud<TDb>(
         throw new CrudianError("cursor must be a number, string, or null")
       }
 
-      const tbl = quoteIdent(table)
-      const where = compileWhere(resolveWhere(query.where))
+      const tbl = d.quoteIdent(table)
+      const where = compileWhere(d, resolveWhere(query.where))
       const total = crud.count(table, { where: query.where })
 
       if (paging === "offset") {
@@ -196,11 +207,12 @@ export function createSyncSqliteCrud<TDb>(
           throw new CrudianError("offset must be a non-negative number")
         }
         const args: unknown[] = [...where.args]
+        let idx = where.nextIndex
         const whereSql = where.sql ? ` WHERE ${where.sql}` : ""
         const sql =
-          `SELECT ${selectColumns(query.columns)} FROM ${tbl}` +
+          `SELECT ${selectColumns(d, query.columns)} FROM ${tbl}` +
           whereSql +
-          ` ORDER BY ${quoteIdent(pk)} ASC LIMIT ? OFFSET ?`
+          ` ORDER BY ${d.quoteIdent(pk)} ASC LIMIT ${d.placeholder(idx++)} OFFSET ${d.placeholder(idx++)}`
         args.push(limit, offset)
         const items = ex.all(sql, args).map((r) => rowFromObject(r) as T)
         return {
@@ -213,17 +225,18 @@ export function createSyncSqliteCrud<TDb>(
       }
 
       const args: unknown[] = [...where.args]
+      let idx = where.nextIndex
       const parts: string[] = []
       if (where.sql) parts.push(`(${where.sql})`)
       if (query.cursor != null) {
-        parts.push(`${quoteIdent(pk)} > ?`)
+        parts.push(`${d.quoteIdent(pk)} > ${d.placeholder(idx++)}`)
         args.push(query.cursor)
       }
       const whereSql = parts.length > 0 ? ` WHERE ${parts.join(" AND ")}` : ""
       const sql =
-        `SELECT ${selectColumns(query.columns)} FROM ${tbl}` +
+        `SELECT ${selectColumns(d, query.columns)} FROM ${tbl}` +
         whereSql +
-        ` ORDER BY ${quoteIdent(pk)} ASC LIMIT ?`
+        ` ORDER BY ${d.quoteIdent(pk)} ASC LIMIT ${d.placeholder(idx++)}`
       args.push(limit + 1)
 
       const rows = ex.all(sql, args).map((r) => rowFromObject(r) as T)
@@ -246,10 +259,10 @@ export function createSyncSqliteCrud<TDb>(
     count(table: string, query: CountQuery = {}): number {
       assertString(table, "table")
       ensurePkColumn(table)
-      const tbl = quoteIdent(table)
-      const where = compileWhere(resolveWhere(query.where))
+      const tbl = d.quoteIdent(table)
+      const where = compileWhere(d, resolveWhere(query.where))
       const sql =
-        `SELECT COUNT(*) AS ${quoteIdent("row_count")} FROM ${tbl}` +
+        `SELECT COUNT(*) AS ${d.quoteIdent("row_count")} FROM ${tbl}` +
         (where.sql ? ` WHERE ${where.sql}` : "")
       const row = ex.get(sql, where.args)
       return Number(row?.row_count ?? 0)
@@ -258,10 +271,10 @@ export function createSyncSqliteCrud<TDb>(
     exists(table: string, query: CountQuery = {}): boolean {
       assertString(table, "table")
       ensurePkColumn(table)
-      const tbl = quoteIdent(table)
-      const where = compileWhere(resolveWhere(query.where))
+      const tbl = d.quoteIdent(table)
+      const where = compileWhere(d, resolveWhere(query.where))
       const sql =
-        `SELECT 1 AS ${quoteIdent("ok")} FROM ${tbl}` +
+        `SELECT 1 AS ${d.quoteIdent("ok")} FROM ${tbl}` +
         (where.sql ? ` WHERE ${where.sql}` : "") +
         ` LIMIT 1`
       return ex.get(sql, where.args) != null
@@ -355,12 +368,13 @@ export function createSyncSqliteCrud<TDb>(
         throw new CrudianError("cols must not be empty")
       }
 
-      const tbl = quoteIdent(table)
-      const where = compileWhere(resolveWhere(query.where))
+      const tbl = d.quoteIdent(table)
+      let idx = 1
+      const sets = keys.map((k) => `${d.quoteIdent(k)} = ${d.placeholder(idx++)}`).join(", ")
+      const where = compileWhere(d, resolveWhere(query.where), idx)
       if (!where.sql) {
         throw new CrudianError("bulkUpdate requires where")
       }
-      const sets = keys.map((k) => `${quoteIdent(k)} = ?`).join(", ")
       const args = [...keys.map((k) => cols[k]), ...where.args]
       const result = ex.run(`UPDATE ${tbl} SET ${sets} WHERE ${where.sql}`, args)
       return Number(result.changes ?? 0)
@@ -400,4 +414,13 @@ export function createSyncSqliteCrud<TDb>(
   }
 
   return crud
+}
+
+/** SQLite sync CRUD (compat). */
+export function createSyncSqliteCrud<TDb>(
+  db: TDb,
+  ex: SyncSqliteExecutor,
+  options?: CreateCrudOptions,
+): SyncSqliteCrud<TDb> {
+  return createSyncCrud(db, ex, sqliteDialect, options)
 }
