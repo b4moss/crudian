@@ -38,7 +38,7 @@ DDD の Repository 層向け CRUD 抽象ライブラリ。
 - 両モードとも当面 `id` 昇順固定
 - `search` / `list` の `total` と `count()` は where 全件数（limit / offset / cursor 非依存）。`count` は `search` と同じ where コンパイルを流用する
 - 存在の有無だけが必要なら `exists`、件数が必要なら `count`（`exists` は `count > 0` の糖衣。実装は `SELECT 1 … LIMIT 1`）
-- Go の接続プール／lifetime は `Options.Pool` / `ApplyPool`（GORM で適用、libSQL は no-op。JS は #73）
+- Go の接続プール／lifetime は `Options.Pool` / `ApplyPool`（GORM で適用、libSQL は no-op。JS は #73 / [`docs/tests/v0.10.0.md`](./tests/v0.10.0.md)）
 - 全文検索には対応しない
 - 行データはジェネリクスで型付けする
 - 契約語彙は PHP / Go にも写せる形を先に寄せる
@@ -152,7 +152,8 @@ const crud = createCrud(db)
 | **v0.6.0** | libSQL アダプタ（`@b4moss/crudian/libsql` / `@libsql/client`。#42） |
 | **v0.7.0** | Go モジュール（`go/gorm` + `go/libsql`。**現状 SQLite のみ**。MySQL / Postgres は後続。#48） |
 | **v0.8.0** | `search` / `list` の offset pagination と `paging` 切替（デフォルト `"offset"`。#90）。JS 全アダプタ + Go |
-| **v0.9.0** | `exists` / `Exists`（boolean 糖衣。#106）。Go 接続プール／lifetime（GORM 適用・libSQL no-op。#105。JS は #73） |
+| **v0.9.0** | `exists` / `Exists`（boolean 糖衣。#106）。Go 接続プール／lifetime（GORM 適用・libSQL no-op。#105。JS は #73 / v0.10.0） |
+| **v0.10.0** | Dialect / MySQL・Postgres（#73）。JS Prisma + Go GORM。JS プール文書化（#105 連動）。受け入れ: [`docs/tests/v0.10.0.md`](./tests/v0.10.0.md) |
 
 ## バージョン方針
 
