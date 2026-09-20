@@ -3,7 +3,8 @@
 `@b4moss/crudian/typeorm` を、既存の async CRUD 契約で追加する方針のメモ。  
 仕様の正は [`docs/main.md`](../main.md)。マイルストーン割当は [`roadmap.md`](./roadmap.md)。  
 関連 Issue: [#43](https://github.com/b4moss/crudian/issues/43)（マイルストーン **v0.11.0**）  
-前提: [#73](https://github.com/b4moss/crudian/issues/73)（Dialect / MySQL・Postgres）が **MySQL まで完了**していること（受け入れ: [`docs/tests/v0.10.0.md`](../tests/v0.10.0.md)）。
+前提: [#73](https://github.com/b4moss/crudian/issues/73)（Dialect / MySQL・Postgres）が **MySQL まで完了**していること（受け入れ: [`docs/tests/v0.10.0.md`](../tests/v0.10.0.md)、ゲート達成済み）。  
+本マイルストーンの受け入れ: [`docs/tests/v0.11.0.md`](../tests/v0.11.0.md)。
 
 ## 製品意図
 
@@ -82,7 +83,7 @@ await crud.search("items", { where: where().eq("name", "alpha") })
 | ランタイム | **Node.js 24+** と **Bun** の両方で必須 |
 | DB（初版必須） | SQLite + Postgres + MySQL |
 | 契約 | 既存 v0.1 / v0.2 / v0.5 / v0.8 相当を typeorm で一式 |
-| 受け入れ | [`docs/tests/`](../tests/) に v0.11.0 向け仕様を別途追加 |
+| 受け入れ | [`docs/tests/v0.11.0.md`](../tests/v0.11.0.md) |
 | 非対象（初版） | リモート Cloud 専用 E2E、PHP、ORM の全機能網羅 |
 
 ## 目標 / 非目標（Q9）
