@@ -241,17 +241,19 @@ jobs:
         if: steps.skip.outputs.hit != 'true'
         run: bun install --frozen-lockfile
 
-      - name: Test drizzle
+      - name: Test drizzle / prisma / libsql with coverage
         if: steps.skip.outputs.hit != 'true'
-        run: bun run test:drizzle
+        run: bun run test:node-adapters:coverage
 
-      - name: Test prisma
+      - name: Upload JS node-adapters coverage to Codecov
         if: steps.skip.outputs.hit != 'true'
-        run: bun run test:prisma
-
-      - name: Test libsql
-        if: steps.skip.outputs.hit != 'true'
-        run: bun run test:libsql
+        uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5.5.5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: packages/js/coverage/node-adapters/lcov.info
+          flags: node-adapters
+          fail_ci_if_error: false
+          verbose: true
 
       - name: Test typeorm (Node)
         if: steps.skip.outputs.hit != 'true'
@@ -345,7 +347,7 @@ jobs:
 
       - name: Test with coverage
         if: steps.skip.outputs.hit != 'true'
-        run: go test -coverprofile=coverage.out -covermode=atomic ./...
+        run: go test -coverprofile=coverage.out -covermode=atomic -coverpkg=./... ./...
 
       - name: Upload Go coverage to Codecov
         if: steps.skip.outputs.hit != 'true'
