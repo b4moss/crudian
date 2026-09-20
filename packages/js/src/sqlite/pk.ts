@@ -1,5 +1,6 @@
 import { CrudianError, type CreateCrudOptions } from "../index.js"
-import { quoteIdent } from "./sql.js"
+import type { Dialect } from "../dialect/types.js"
+import { sqliteDialect } from "../dialect/sqlite.js"
 
 /** Resolve PK column name from createCrud options. Default: `"id"`. */
 export function resolvePk(options?: CreateCrudOptions): string {
@@ -15,32 +16,22 @@ export function resolvePk(options?: CreateCrudOptions): string {
   return options.pk
 }
 
-export type PkColumnChecker = {
-  get(sql: string, args?: unknown[]): { name?: unknown } | RowLike | undefined
-}
-
-export type AsyncPkColumnChecker = {
-  get(
-    sql: string,
-    args?: unknown[],
-  ): Promise<{ name?: unknown } | RowLike | undefined>
-}
-
 type RowLike = Record<string, unknown>
 
 /**
- * Ensure `pk` exists on `table` via PRAGMA table_info. Caches per table.
+ * Ensure `pk` exists on `table` via dialect.describeColumns. Caches per table.
  * Throws CrudianError when the column is missing.
  */
 export function createPkGuard(
   pk: string,
-  get: (sql: string, args?: unknown[]) => RowLike | undefined,
+  dialect: Dialect,
   all: (sql: string, args?: unknown[]) => RowLike[],
 ) {
   const ok = new Set<string>()
   return function ensurePkColumn(table: string): void {
     if (ok.has(table)) return
-    const rows = all(`PRAGMA table_info(${quoteIdent(table)})`)
+    const q = dialect.describeColumns(table)
+    const rows = all(q.sql, q.args)
     const names = new Set(
       rows.map((r) => String(r.name ?? "")).filter((n) => n.length > 0),
     )
@@ -55,12 +46,14 @@ export function createPkGuard(
 
 export function createAsyncPkGuard(
   pk: string,
+  dialect: Dialect,
   all: (sql: string, args?: unknown[]) => Promise<RowLike[]>,
 ) {
   const ok = new Set<string>()
   return async function ensurePkColumn(table: string): Promise<void> {
     if (ok.has(table)) return
-    const rows = await all(`PRAGMA table_info(${quoteIdent(table)})`)
+    const q = dialect.describeColumns(table)
+    const rows = await all(q.sql, q.args)
     const names = new Set(
       rows.map((r) => String(r.name ?? "")).filter((n) => n.length > 0),
     )
@@ -71,4 +64,14 @@ export function createAsyncPkGuard(
     }
     ok.add(table)
   }
+}
+
+/** @deprecated Prefer createPkGuard(pk, dialect, all). */
+export function createPkGuardSqlite(
+  pk: string,
+  get: (sql: string, args?: unknown[]) => RowLike | undefined,
+  all: (sql: string, args?: unknown[]) => RowLike[],
+) {
+  void get
+  return createPkGuard(pk, sqliteDialect, all)
 }

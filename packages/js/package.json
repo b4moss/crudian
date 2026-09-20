@@ -1,6 +1,6 @@
 {
   "name": "@b4moss/crudian",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "CRUD abstraction for DDD repositories",
   "type": "module",
   "license": "MIT",
@@ -41,10 +41,14 @@
     "build": "tsc -p tsconfig.json",
     "prepublishOnly": "npm run build",
     "prisma:generate": "prisma generate --schema prisma/schema.prisma",
+    "prisma:generate:postgres": "prisma generate --schema prisma/schema.postgres.prisma",
+    "prisma:generate:mysql": "prisma generate --schema prisma/schema.mysql.prisma",
     "test": "bun run test:bun-sqlite && bun run test:drizzle && bun run test:prisma && bun run test:libsql",
     "test:bun-sqlite": "bun test src/bun-sqlite",
     "test:drizzle": "tsx --test src/drizzle/crud.test.ts src/drizzle/pk.test.ts",
     "test:prisma": "bun run prisma:generate && tsx --test src/prisma/crud.test.ts src/prisma/pk.test.ts",
+    "test:prisma:postgres": "bun run prisma:generate:postgres && DATABASE_URL_POSTGRES=\"${DATABASE_URL_POSTGRES:-postgresql://crudian:crudian@127.0.0.1:5432/crudian?sslmode=disable}\" tsx --test src/prisma/postgres.test.ts",
+    "test:prisma:mysql": "bun run prisma:generate:mysql && DATABASE_URL_MYSQL=\"${DATABASE_URL_MYSQL:-mysql://crudian:crudian@127.0.0.1:3306/crudian}\" tsx --test src/prisma/mysql.test.ts",
     "test:libsql": "tsx --test src/libsql/crud.test.ts src/libsql/pk.test.ts"
   },
   "engines": {

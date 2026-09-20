@@ -32,8 +32,11 @@ skip() {
   exit 0
 }
 
-# Accept a v* tag on HEAD or on an ancestor (merge commits onto release
-# usually do not carry the tag themselves).
+# Accept a v* tag when:
+# - it is on HEAD or an ancestor (merge commits onto release usually do not
+#   carry the tag themselves), OR
+# - HEAD's tree matches the tagged commit's tree (squash-merge onto release
+#   rewrites history so the tag is not an ancestor, but content is identical).
 PKG_VER="$(node -p "require('${PKG_DIR}/package.json').version")"
 TAG="v${PKG_VER}"
 
@@ -43,12 +46,21 @@ fi
 
 TAG_COMMIT="$(git rev-list -n 1 "${TAG}")"
 HEAD_COMMIT="$(git rev-parse HEAD)"
+TAG_TREE="$(git rev-parse "${TAG_COMMIT}^{tree}")"
+HEAD_TREE="$(git rev-parse "${HEAD_COMMIT}^{tree}")"
+
 if [[ "$TAG_COMMIT" != "$HEAD_COMMIT" ]] &&
-  ! git merge-base --is-ancestor "$TAG_COMMIT" "$HEAD_COMMIT"; then
-  skip "Tag ${TAG} (${TAG_COMMIT}) is not an ancestor of HEAD; skip npm publish."
+  ! git merge-base --is-ancestor "$TAG_COMMIT" "$HEAD_COMMIT" &&
+  [[ "$TAG_TREE" != "$HEAD_TREE" ]]; then
+  skip "Tag ${TAG} (${TAG_COMMIT}) is not an ancestor of HEAD and trees differ; skip npm publish."
 fi
 
-echo "Using tag ${TAG} at ${TAG_COMMIT} (HEAD=${HEAD_COMMIT})."
+if [[ "$TAG_COMMIT" == "$HEAD_COMMIT" ]] ||
+  git merge-base --is-ancestor "$TAG_COMMIT" "$HEAD_COMMIT"; then
+  echo "Using tag ${TAG} at ${TAG_COMMIT} (HEAD=${HEAD_COMMIT})."
+elif [[ "$TAG_TREE" == "$HEAD_TREE" ]]; then
+  echo "Using tag ${TAG} at ${TAG_COMMIT} via matching tree on HEAD=${HEAD_COMMIT} (squash-safe)."
+fi
 emit "tag" "$TAG"
 
 # Critical: npm refuses republish. If this SemVer is already on the registry,
