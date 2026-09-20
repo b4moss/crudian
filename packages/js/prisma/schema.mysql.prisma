@@ -1,0 +1,18 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma-mysql-client"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL_MYSQL")
+}
+
+model Item {
+  id    Int     @id @default(autoincrement())
+  name  String
+  score Int?
+  note  String?
+
+  @@map("items")
+}

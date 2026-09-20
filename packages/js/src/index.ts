@@ -32,3 +32,4 @@ export type {
   CreateCrudOptions,
   CreateCrudDialect,
 } from "./types.js"
+export type { PoolOptions } from "./pool.js"

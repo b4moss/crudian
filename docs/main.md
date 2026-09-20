@@ -38,7 +38,9 @@ DDD の Repository 層向け CRUD 抽象ライブラリ。
 - 両モードとも当面 `id` 昇順固定
 - `search` / `list` の `total` と `count()` は where 全件数（limit / offset / cursor 非依存）。`count` は `search` と同じ where コンパイルを流用する
 - 存在の有無だけが必要なら `exists`、件数が必要なら `count`（`exists` は `count > 0` の糖衣。実装は `SELECT 1 … LIMIT 1`）
-- Go の接続プール／lifetime は `Options.Pool` / `ApplyPool`（GORM で適用、libSQL は no-op。JS は #73 / [`docs/tests/v0.10.0.md`](./tests/v0.10.0.md)）
+- Go の接続プール／lifetime は `Options.Pool` / `ApplyPool`（GORM で適用、libSQL は no-op）
+- JS のプールは呼び出し側（Prisma datasource 等）。型 `PoolOptions` は文書化用。SQLite アダプタは no-op（#73 / [`docs/tests/v0.10.0.md`](./tests/v0.10.0.md)）
+- **Dialect:** SQLite / Postgres / MySQL。JS は Prisma の `options.dialect`、Go は GORM の `Options.Driver` / `Dialect`。Drizzle は SQLite のみ。MySQL は `RETURNING` 非使用（insert 後 SELECT）
 - 全文検索には対応しない
 - 行データはジェネリクスで型付けする
 - 契約語彙は PHP / Go にも写せる形を先に寄せる
@@ -134,9 +136,9 @@ const crud = createCrud(db)
 |----------|------------|--------|
 | `bun-sqlite` | Bun | `bun:test`（`bun test`） |
 | `drizzle` | Node.js 24+ | `node:test`（`node --test`） |
-| `prisma` | Node.js 24+ | `node:test`（`node --test`） |
+| `prisma` | Node.js 24+ | `node:test`（SQLite 常時。Postgres / MySQL は `test:prisma:postgres` / `test:prisma:mysql`） |
 | `libsql`（JS） | Node.js 24+ / Bun | `node:test`（`node --test`） |
-| `go/gorm` | Go 1.26+ | `go test`（GORM + **SQLite のみ**。MySQL / Postgres は将来） |
+| `go/gorm` | Go 1.26+ | `go test`（SQLite + Postgres / MySQL 契約。後者は実 DB） |
 | `go/libsql` | Go 1.26+ | `go test`（公式 libSQL `database/sql`、SQLite 互換） |
 
 ## マイルストーン

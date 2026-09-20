@@ -3,6 +3,7 @@ package crudian
 import (
 	"context"
 	"fmt"
+	"strconv"
 )
 
 // Crud is the table-oriented facade (JS createCrud equivalent).
@@ -557,10 +558,26 @@ func toInt64(v any) int64 {
 		return int64(n)
 	case int32:
 		return int64(n)
+	case uint64:
+		return int64(n)
+	case uint32:
+		return int64(n)
 	case float64:
 		return int64(n)
 	case float32:
 		return int64(n)
+	case []byte:
+		parsed, err := strconv.ParseInt(string(n), 10, 64)
+		if err != nil {
+			return 0
+		}
+		return parsed
+	case string:
+		parsed, err := strconv.ParseInt(n, 10, 64)
+		if err != nil {
+			return 0
+		}
+		return parsed
 	default:
 		return 0
 	}

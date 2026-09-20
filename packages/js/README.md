@@ -69,17 +69,38 @@ const db = drizzle(sqlite)
 const crud = createCrud(db)
 ```
 
-### Prisma (SQLite) — async
+### Prisma (SQLite / Postgres / MySQL) — async
 
 ```ts
 import { PrismaClient } from "@prisma/client"
 import { createCrud } from "@b4moss/crudian/prisma"
 
 const client = new PrismaClient()
-const crud = createCrud(client)
+// Default dialect is "sqlite". For server DBs:
+const crudPg = createCrud(client, { dialect: "postgres" })
+const crudMy = createCrud(client, { dialect: "mysql" })
+const crudSqlite = createCrud(client) // or { dialect: "sqlite" }
 
-await crud.create("items", { name: "alpha", score: 1 })
+await crudSqlite.create("items", { name: "alpha", score: 1 })
 ```
+
+Match `options.dialect` to the Prisma schema `provider`. Placeholders and
+insert-return strategies follow the dialect (`$n` + `RETURNING` on Postgres;
+`` `ident` `` + `LAST_INSERT_ID` fetch on MySQL — no `RETURNING`).
+
+### Connection pool / lifetime (JS)
+
+crudian never opens connections. For **Postgres / MySQL**, configure pooling on
+the client you inject:
+
+| Adapter | How to set pool |
+|---------|-----------------|
+| **Prisma** | Prisma datasource / connection URL params / engine pool settings (caller-owned). See Prisma docs for your provider. |
+| **bun-sqlite / drizzle (sqlite) / libsql** | No pool settings needed (no-op). |
+
+Optional type for docs / future drivers: `PoolOptions` from `@b4moss/crudian`
+(not applied by Prisma — configure the client instead). Go GORM uses
+`crudian.Options.Pool` / `ApplyPool` (see `packages/go/README.md`).
 
 ### libSQL (`@libsql/client`) — async
 
@@ -385,18 +406,21 @@ Nestable `and` / `or`. Empty `in([])` is rejected.
 
 | Topic | Behavior |
 |-------|----------|
-| Entry | `createCrud(db)` — inject a caller-owned client; exposed as `crud.db` |
+| Entry | `createCrud(db, options?)` — inject a caller-owned client; exposed as `crud.db` |
+| Dialects | Shared Dialect layer: SQLite (all adapters), Postgres / MySQL via **Prisma** (`options.dialect`) |
+| Drizzle | **SQLite (better-sqlite3) only** in this line; PG/MySQL subpaths are out of scope |
 | Sync vs async | `bun-sqlite` / `drizzle` sync; `prisma` / `libsql` return `Promise`s |
 | `read` / `update` / `duplicate` miss | `null` |
 | `delete` / bulk miss | `0` |
-| Upsert conflict | primary key `id` |
-| Pagination | cursor on `id` ASC only (no offset) |
+| Upsert conflict | application-level on PK (default `id`; no SQL `ON CONFLICT`) |
+| Pagination | `paging?: "offset" \| "cursor"` (default `"offset"`) |
 | `columns` | optional on `read` / `search` / `list`; omit → `*` |
 | `search.total` / `count` | full where count; not page length |
-| `exists` | boolean presence; same input as `count`; use instead of `count > 0` when you only need yes/no |
+| `exists` | boolean presence; same input as `count` |
+| Pool | caller-owned; Prisma via datasource settings; SQLite adapters no-op |
 | Errors | minimal `CrudianError`; other errors propagate from the driver |
 | Identifiers | string required; no format validation |
-| Out of scope | relations, migrations, full-text search, ORM models |
+| Out of scope | relations, migrations, full-text search, ORM models, TypeORM (#43) |
 
 ## License
 
