@@ -65,7 +65,7 @@ export type CreateCrudOptions = {
   pk?: string
   /**
    * SQL dialect. Default: `"sqlite"`.
-   * Used by Prisma (and future multi-DB adapters). SQLite-only adapters ignore this.
+   * Used by Prisma / TypeORM (and other multi-DB adapters). SQLite-only adapters ignore this.
    */
   dialect?: CreateCrudDialect
 }

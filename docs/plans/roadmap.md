@@ -192,18 +192,20 @@ JS 契約を Go へ移植する（#48）。**Go の公開初版は `0.7.0`**（`
 | DB | SQLite + Postgres + MySQL すべて必須 | #73 MySQL 完了が前提 |
 | ランタイム | Node 24+ **と** Bun | 両方で `test:typeorm` |
 | 実装 | QueryBuilder / Repository を積極利用 | |
-| codecov | カバレッジ 75%（#96） | 本文は別途肉付け可 |
+| codecov | カバレッジ 75%（#96） | 計測修正 → 不足分テスト |
 | 設計 | [`typeorm-adapter.md`](./typeorm-adapter.md) | |
+| テスト | [`docs/tests/v0.11.0.md`](../tests/v0.11.0.md) | |
 
 **対象外（v0.11.0）:** Entity 第一級 API、関係グラフ横断 CRUD、Cloud 専用 E2E、PHP
 
 ### v0.11.0 推奨実装順
 
-1. #73 MySQL 完了を確認
-2. 仕様・テスト仕様の固定（本マイルストーンの docs）
-3. `packages/js/src/typeorm` + exports / peer / scripts
-4. SQLite → Postgres → MySQL の順で契約テスト
-5. Node / Bun 両ランタイムと CI・README → 版上げ
+1. #73 MySQL 完了を確認（済み）
+2. 仕様・テスト仕様の固定（[`docs/tests/v0.11.0.md`](../tests/v0.11.0.md)）
+3. #96 計測修正（Go `-coverpkg` / JS adapter coverage upload）
+4. `packages/js/src/typeorm` + exports / peer / scripts
+5. SQLite → Postgres → MySQL の順で契約テスト
+6. Node / Bun 両ランタイムと CI・README → Codecov 75% 確認 → 版上げ
 
 ---
 
@@ -254,6 +256,6 @@ JS 契約を Go へ移植する（#48）。**Go の公開初版は `0.7.0`**（`
 | | #105 DB 接続プール／lifetime（Go/GORM 先行。JS は #73 / v0.10.0） |
 | **v0.4.0** | #44 Docker / Dev Containers（全ランタイム 1 コンテナ + 実 DB E2E） |
 | **v0.10.0** | #73 Dialect / MySQL・Postgres（JS プール含む。テスト: [`docs/tests/v0.10.0.md`](../tests/v0.10.0.md)） |
-| **v0.11.0** | #43 TypeORM アダプタ / #96 codecov 75% |
+| **v0.11.0** | #43 TypeORM アダプタ / #96 codecov 75%（テスト: [`docs/tests/v0.11.0.md`](../tests/v0.11.0.md)） |
 
 クローズ済み（方針変更により機能 Issue へ内包）: #10 / #11
