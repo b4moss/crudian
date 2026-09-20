@@ -2,7 +2,7 @@
 
 CRUD facade matching the JavaScript `@b4moss/crudian` contract, for **GORM** and **libSQL**.
 
-**Database support today: SQLite only** (GORM + SQLite, and libSQL’s SQLite-compatible engine). **MySQL and PostgreSQL are planned** via the existing `Dialect` layer; stubs exist, but those backends are not implemented or supported in v0.7.0.
+**Supported databases:** SQLite (GORM + libSQL), **PostgreSQL** and **MySQL** (GORM with explicit `Driver` / `Dialect`). libSQL stays SQLite-compatible.
 
 API shape: **synchronous methods with `context.Context` as the first argument** (no JS-style sync/async split). Rows are `map[string]any` (`crudian.Row`) — not ORM structs.
 
@@ -11,44 +11,61 @@ API shape: **synchronous methods with `context.Context` as the first argument** 
 Go does not use an npm-like registry for this package. You depend on the **module path**; the toolchain fetches the matching **git tag** (often via `proxy.golang.org` as a cache).
 
 ```bash
-go get github.com/b4moss/crudian/go@v0.7.0
+go get github.com/b4moss/crudian/go@v0.9.0
 ```
 
 Or in `go.mod`:
 
 ```go
-require github.com/b4moss/crudian/go v0.7.0
+require github.com/b4moss/crudian/go v0.9.0
 ```
 
 | Item | Value |
 |------|--------|
 | Module path | `github.com/b4moss/crudian/go` |
 | Source tree | `packages/go/` in this repository |
-| Version file | [`VERSION`](./VERSION) (first release: **0.7.0**) |
+| Version file | [`VERSION`](./VERSION) |
 | Git tag | **`packages/go/vX.Y.Z`** (must match `VERSION`) |
 | Minimum Go | 1.22+ locally; **CI uses Go 1.26** |
 
-Language versions are independent: npm `@b4moss/crudian` may remain on `0.6.0` while this module ships `0.7.0`.
+Language versions are independent of the npm package.
 
 ## Packages
 
 | Import | Entry | Injected client |
 |--------|--------|-----------------|
-| `.../go/gorm` | `gorm.CreateCrud(db)` | `*gorm.DB` (SQLite) |
-| `.../go/libsql` | `libsql.CreateCrud(db)` | `*sql.DB` |
-| `.../go/crudian` | shared types | `Where`, `SqliteDialect`, `Crud`, queries |
+| `.../go/gorm` | `gorm.CreateCrud(db, opts...)` | `*gorm.DB` (SQLite / Postgres / MySQL) |
+| `.../go/libsql` | `libsql.CreateCrud(db)` | `*sql.DB` (SQLite-compatible) |
+| `.../go/crudian` | shared types | `Where`, Dialects, `Crud`, queries, `PoolOptions` |
 
 `CreateCrud` never opens connections. The caller owns the DB and can use `crud.DB` for escapes.
 
-### Connection pool / lifetime (#105)
+### Dialect (#73)
 
-For server databases (MySQL / Postgres later), set pool options on the underlying `*sql.DB`:
+| Dialect | Quote | Placeholder | Insert return |
+|---------|-------|-------------|-----------------|
+| `SqliteDialect` | `"x"` | `?` | `RETURNING *` |
+| `PostgresDialect` | `"x"` | `$n` | `RETURNING *` |
+| `MySQLDialect` | `` `x` `` | `?` | insert + `LAST_INSERT_ID()` + `SELECT` (no `RETURNING`) |
+
+Select dialect on GORM via **explicit** options (preferred over auto-detect):
+
+```go
+crud, err := gorm.CreateCrud(db, crudian.Options{Driver: "postgres"})
+// or: crudian.Options{Dialect: crudian.PostgresDialect{}}
+// mysql: Driver: "mysql" / MySQLDialect{}
+// default / omit: SqliteDialect
+```
+
+Upsert stays **application-level** (read → update / create); not `ON CONFLICT` / `ON DUPLICATE KEY`.
+
+### Connection pool / lifetime (#105)
 
 | Backend | Behavior |
 |---------|----------|
-| **GORM** | Pass `crudian.Options{Pool: &crudian.PoolOptions{...}}` to `CreateCrud` — applied via `db.DB()` |
-| **libSQL** | `Pool` is accepted but **ignored** (single-connection oriented). Call `crudian.ApplyPool(db, …)` yourself only if you need it |
-| **JS** | Deferred to Dialect work ([#73](https://github.com/b4moss/crudian/issues/73)) |
+| **GORM** (SQLite / Postgres / MySQL) | Pass `crudian.Options{Pool: &crudian.PoolOptions{...}}` to `CreateCrud` — applied via `db.DB()` |
+| **libSQL** | `Pool` is accepted but **ignored** (single-connection oriented) |
+| **JS** | Prisma: configure pool on the injected client / datasource ([`packages/js/README.md`](../js/README.md)). SQLite adapters are no-op. |
 
 Nil fields in `PoolOptions` leave that setting unchanged. Helpers: `crudian.ApplyPool(*sql.DB, *PoolOptions)`.
 
@@ -57,6 +74,7 @@ maxOpen := 10
 idle := 5
 lifetime := time.Hour
 crud, err := gorm.CreateCrud(db, crudian.Options{
+	Driver: "postgres",
 	Pool: &crudian.PoolOptions{
 		MaxOpenConns:    &maxOpen,
 		MaxIdleConns:    &idle,
@@ -96,35 +114,30 @@ func main() {
 		panic(err)
 	}
 	fmt.Println(row["id"])
-
-	got, err := crud.Read(ctx, "items", crudian.ReadQuery{
-		Where: crudian.Where().Eq("id", row["id"]),
-	})
-	if err != nil {
-		panic(err)
-	}
-	_ = got
-
-	page, err := crud.Search(ctx, "items", crudian.SearchQuery{
-		Where: crudian.Where().Eq("name", "alpha"),
-		Limit: 20,
-	})
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(page.Total, len(page.Items), page.NextCursor, page.HasMore)
 }
 ```
 
-Pure-Go SQLite drivers such as `github.com/glebarez/sqlite` are fine for tests and apps that want to avoid CGO. GORM’s `gorm.io/driver/sqlite` (CGO) also works if you prefer it.
+## GORM / Postgres or MySQL
+
+```go
+import (
+	"github.com/b4moss/crudian/go/crudian"
+	"github.com/b4moss/crudian/go/gorm"
+	"gorm.io/driver/postgres" // or gorm.io/driver/mysql
+	gormio "gorm.io/gorm"
+)
+
+db, err := gormio.Open(postgres.Open(dsn), &gormio.Config{})
+crud, err := gorm.CreateCrud(db, crudian.Options{Driver: "postgres"})
+```
+
+Tests: `go test ./gorm/ -run TestPostgresDialectContract` / `TestMySQLDialectContract` (local or docker DB; see [`docs/tests/v0.10.0.md`](../../docs/tests/v0.10.0.md)).
 
 ## libSQL
 
 Inject a `*sql.DB` opened with `github.com/tursodatabase/libsql-client-go/libsql`.
 
 For local **`file://`** URLs that driver delegates to a registered `sqlite` / `sqlite3` driver — blank-import one (for example `modernc.org/sqlite`). Prefer absolute `file:///...` paths. Avoid `:memory:` when using transactions.
-
-Upstream marks `libsql-client-go` deprecated in favor of `go-libsql` / `tursogo`. This milestone still targets the official client; if it becomes unusable, fall back to `go-libsql` (CGO) and document why here.
 
 ```go
 import (
@@ -138,13 +151,7 @@ import (
 )
 
 db, err := sql.Open("libsql", "file:///absolute/path/to/local.db")
-if err != nil {
-	panic(err)
-}
 crud, err := libsql.CreateCrud(db)
-if err != nil {
-	panic(err)
-}
 row, err := crud.Create(context.Background(), "items", crudian.Row{"name": "alpha", "score": 1})
 _ = row
 ```
@@ -155,35 +162,33 @@ All methods take `ctx context.Context` first. Table names are plain strings.
 
 | Method | Returns | Notes |
 |--------|---------|--------|
-| `Create` | row | `INSERT … RETURNING *` |
+| `Create` | row | dialect insert-return (`RETURNING *` or fetch-after-insert) |
 | `Read` | row or `nil` | miss is not an error |
 | `Update` | row or `nil` | requires `Where` |
 | `Delete` | rows affected | requires `Where` |
-| `Search` / `List` | `SearchResult` | cursor on `id` ASC; includes `Total` |
+| `Search` / `List` | `SearchResult` | offset (default) or cursor; includes `Total` |
 | `Count` | `int64` | `Where` only |
 | `Exists` | `bool` | `Where` only; presence sugar (`Count > 0`) |
-| `Upsert` | row | requires `cols["id"]` |
+| `Upsert` | row | requires PK in cols; app-level |
 | `Duplicate` | row or `nil` | requires `Where` |
 | `BulkCreate` / `BulkUpdate` / `BulkDelete` / `BulkUpsert` | count | |
 | `Transaction` | error | explicit only; CRUD does not auto-begin |
 
 `Where` builders: `Eq` / `Ne` / `Lt` / `Gt` / `Lte` / `Gte` / `In` / `Like` / `IsNull` / `IsNotNull`, plus nestable `And` / `Or`.
 
-Contract details match the JS adapters (primary key / cursor column `id` for now). Spec: [`docs/main.md`](../../docs/main.md), design: [`docs/plans/go-module.md`](../../docs/plans/go-module.md).
+Spec: [`docs/main.md`](../../docs/main.md), tests: [`docs/tests/v0.10.0.md`](../../docs/tests/v0.10.0.md).
 
 ## Versioning and release
 
-1. Set [`VERSION`](./VERSION) (for example `0.7.0`).
-2. Tag the release commit: `packages/go/v0.7.0` (not the root `v0.7.0` tag used for npm).
-3. Push the tag (and/or merge that commit to `release`). [Publish Go](../../.github/workflows/publish-go.yml) runs tests, creates a GitHub Release, and best-effort pings `proxy.golang.org`.
+1. Set [`VERSION`](./VERSION).
+2. Tag the release commit: `packages/go/vX.Y.Z`.
+3. Push the tag (and/or merge that commit to `release`).
 
-Root milestone tag `v0.7.0` alone does **not** publish this module. Leaving npm at `0.6.0` while shipping Go `0.7.0` is intentional and supported.
+CI policy: [`.github/CI.md`](../../.github/CI.md).
 
-CI policy (path filters, lint, pass-markers): [`.github/CI.md`](../../.github/CI.md).
+## Out of scope
 
-## Out of scope (v0.7.0)
-
-- **MySQL / PostgreSQL** (and other non-SQLite GORM drivers) — **planned later**; Dialect stubs only today
-- Configurable primary-key column names
-- ORM model mapping, migrations, full-text search, offset pagination
-- Product E2E in CI
+- TypeORM / PHP packages
+- Configurable composite primary keys
+- ORM model mapping, migrations, full-text search
+- Putting pool settings on the Dialect interface

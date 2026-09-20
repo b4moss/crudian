@@ -6,23 +6,28 @@ import (
 )
 
 type compiledWhere struct {
-	SQL  string
-	Args []any
+	SQL       string
+	Args      []any
+	NextIndex int // next 1-based placeholder index
 }
 
-func compileWhere(d Dialect, node WhereNode) (compiledWhere, error) {
+func compileWhere(d Dialect, node WhereNode, startIndex int) (compiledWhere, error) {
+	if startIndex < 1 {
+		startIndex = 1
+	}
 	if node == nil {
-		return compiledWhere{}, nil
+		return compiledWhere{NextIndex: startIndex}, nil
 	}
 	switch n := node.(type) {
 	case GroupNode:
 		if len(n.Children) == 0 {
-			return compiledWhere{}, nil
+			return compiledWhere{NextIndex: startIndex}, nil
 		}
 		parts := make([]string, 0, len(n.Children))
 		args := make([]any, 0)
+		idx := startIndex
 		for _, child := range n.Children {
-			c, err := compileWhere(d, child)
+			c, err := compileWhere(d, child, idx)
 			if err != nil {
 				return compiledWhere{}, err
 			}
@@ -31,13 +36,14 @@ func compileWhere(d Dialect, node WhereNode) (compiledWhere, error) {
 			}
 			parts = append(parts, "("+c.SQL+")")
 			args = append(args, c.Args...)
+			idx = c.NextIndex
 		}
 		if len(parts) == 0 {
-			return compiledWhere{}, nil
+			return compiledWhere{NextIndex: startIndex}, nil
 		}
 		if len(parts) == 1 {
 			sql := parts[0]
-			return compiledWhere{SQL: sql[1 : len(sql)-1], Args: args}, nil
+			return compiledWhere{SQL: sql[1 : len(sql)-1], Args: args, NextIndex: idx}, nil
 		}
 		join := " AND "
 		if n.Type == "or" {
@@ -47,32 +53,33 @@ func compileWhere(d Dialect, node WhereNode) (compiledWhere, error) {
 		for i := 1; i < len(parts); i++ {
 			out += join + parts[i]
 		}
-		return compiledWhere{SQL: out, Args: args}, nil
+		return compiledWhere{SQL: out, Args: args, NextIndex: idx}, nil
 	case CondNode:
 		col, err := AssertString(n.Column, "column")
 		if err != nil {
 			return compiledWhere{}, err
 		}
 		q := d.QuoteIdent(col)
+		idx := startIndex
 		switch n.Op {
 		case OpEq:
-			return compiledWhere{SQL: q + " = " + d.Placeholder(1), Args: []any{n.Value}}, nil
+			return compiledWhere{SQL: q + " = " + d.Placeholder(idx), Args: []any{n.Value}, NextIndex: idx + 1}, nil
 		case OpNe:
-			return compiledWhere{SQL: q + " <> " + d.Placeholder(1), Args: []any{n.Value}}, nil
+			return compiledWhere{SQL: q + " <> " + d.Placeholder(idx), Args: []any{n.Value}, NextIndex: idx + 1}, nil
 		case OpLt:
-			return compiledWhere{SQL: q + " < " + d.Placeholder(1), Args: []any{n.Value}}, nil
+			return compiledWhere{SQL: q + " < " + d.Placeholder(idx), Args: []any{n.Value}, NextIndex: idx + 1}, nil
 		case OpGt:
-			return compiledWhere{SQL: q + " > " + d.Placeholder(1), Args: []any{n.Value}}, nil
+			return compiledWhere{SQL: q + " > " + d.Placeholder(idx), Args: []any{n.Value}, NextIndex: idx + 1}, nil
 		case OpLte:
-			return compiledWhere{SQL: q + " <= " + d.Placeholder(1), Args: []any{n.Value}}, nil
+			return compiledWhere{SQL: q + " <= " + d.Placeholder(idx), Args: []any{n.Value}, NextIndex: idx + 1}, nil
 		case OpGte:
-			return compiledWhere{SQL: q + " >= " + d.Placeholder(1), Args: []any{n.Value}}, nil
+			return compiledWhere{SQL: q + " >= " + d.Placeholder(idx), Args: []any{n.Value}, NextIndex: idx + 1}, nil
 		case OpLike:
-			return compiledWhere{SQL: q + " LIKE " + d.Placeholder(1), Args: []any{n.Value}}, nil
+			return compiledWhere{SQL: q + " LIKE " + d.Placeholder(idx), Args: []any{n.Value}, NextIndex: idx + 1}, nil
 		case OpIsNull:
-			return compiledWhere{SQL: q + " IS NULL", Args: nil}, nil
+			return compiledWhere{SQL: q + " IS NULL", Args: nil, NextIndex: idx}, nil
 		case OpIsNotNull:
-			return compiledWhere{SQL: q + " IS NOT NULL", Args: nil}, nil
+			return compiledWhere{SQL: q + " IS NOT NULL", Args: nil, NextIndex: idx}, nil
 		case OpIn:
 			vals, err := asSlice(n.Value)
 			if err != nil {
@@ -83,11 +90,13 @@ func compileWhere(d Dialect, node WhereNode) (compiledWhere, error) {
 			}
 			ph := make([]string, len(vals))
 			for i := range vals {
-				ph[i] = d.Placeholder(i + 1)
+				ph[i] = d.Placeholder(idx)
+				idx++
 			}
 			return compiledWhere{
-				SQL:  fmt.Sprintf("%s IN (%s)", q, joinComma(ph)),
-				Args: vals,
+				SQL:       fmt.Sprintf("%s IN (%s)", q, joinComma(ph)),
+				Args:      vals,
+				NextIndex: idx,
 			}, nil
 		default:
 			return compiledWhere{}, NewError("unknown op: " + string(n.Op))

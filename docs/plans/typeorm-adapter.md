@@ -3,7 +3,7 @@
 `@b4moss/crudian/typeorm` を、既存の async CRUD 契約で追加する方針のメモ。  
 仕様の正は [`docs/main.md`](../main.md)。マイルストーン割当は [`roadmap.md`](./roadmap.md)。  
 関連 Issue: [#43](https://github.com/b4moss/crudian/issues/43)（マイルストーン **v0.11.0**）  
-前提: [#73](https://github.com/b4moss/crudian/issues/73)（Dialect / MySQL・Postgres）が **MySQL まで完了**していること。
+前提: [#73](https://github.com/b4moss/crudian/issues/73)（Dialect / MySQL・Postgres）が **MySQL まで完了**していること（受け入れ: [`docs/tests/v0.10.0.md`](../tests/v0.10.0.md)）。
 
 ## 製品意図
 
