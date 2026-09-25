@@ -29,7 +29,7 @@ RUN apt-get update \
         # Client libs for E2E against real DBs
         postgresql-client \
         default-mysql-client \
-        # PHP (future packages/php/*)
+        # PHP (future packages/php)
         php-cli \
         php-sqlite3 \
         php-mysql \
@@ -65,7 +65,7 @@ RUN arch="$(dpkg --print-architecture)" \
     && ln -sf /usr/local/go/bin/go /usr/local/bin/go \
     && ln -sf /usr/local/go/bin/gofmt /usr/local/bin/gofmt
 
-# Composer (for packages/php/*)
+# Composer (for packages/php)
 RUN curl -fsSL https://getcomposer.org/installer \
       | php -- --install-dir=/usr/local/bin --filename=composer
 

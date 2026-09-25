@@ -12,7 +12,7 @@
 | Node.js | **24.x** |
 | Bun | **latest**（イメージビルド時） |
 | Go | **1.26.x** |
-| PHP + Composer | Debian 同梱（`packages/php/*` 用） |
+| PHP + Composer | Debian 同梱（`packages/php` 用） |
 
 **DB サービス**（compose）:
 
