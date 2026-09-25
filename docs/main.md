@@ -159,6 +159,7 @@ Laravel 実装は **無期限延期**。設計・実装仕様の対象外とし�
 | `libsql`（JS） | Node.js 24+ / Bun | `node:test`（`node --test`） |
 | `go/gorm` | Go 1.26+ | `go test`（SQLite + Postgres / MySQL 契約。後者は実 DB） |
 | `go/libsql` | Go 1.26+ | `go test`（公式 libSQL `database/sql`、SQLite 互換） |
+| `php`（PDO / libSQL） | PHP 8.3+ | PHPUnit（PDO SQLite 必須。Postgres / MySQL / libSQL preview は方針に従う）。受け入れ: [`docs/tests/v0.12.0.md`](./tests/v0.12.0.md) |
 
 ## マイルストーン
 
@@ -176,6 +177,7 @@ Laravel 実装は **無期限延期**。設計・実装仕様の対象外とし�
 | **v0.9.0** | `exists` / `Exists`（boolean 糖衣。#106）。Go 接続プール／lifetime（GORM 適用・libSQL no-op。#105。JS は #73 / v0.10.0） |
 | **v0.10.0** | Dialect / MySQL・Postgres（#73）。JS Prisma + Go GORM。JS プール文書化（#105 連動）。受け入れ: [`docs/tests/v0.10.0.md`](./tests/v0.10.0.md) |
 | **v0.11.0** | TypeORM アダプタ（#43）+ codecov 75%（#96）。受け入れ: [`docs/tests/v0.11.0.md`](./tests/v0.11.0.md) |
+| **v0.12.0** | PHP パッケージ（#127）。Packagist `b4moss/crudian`。PDO + libSQL preview。受け入れ: [`docs/tests/v0.12.0.md`](./tests/v0.12.0.md) |
 
 ## バージョン方針
 
