@@ -64,10 +64,10 @@ EOF
   echo "readme local" >"$dir/packages/js/README.md"
   echo "0.7.0" >"$dir/packages/go/VERSION"
   echo 'module github.com/b4moss/crudian/go' >"$dir/packages/go/go.mod"
+  echo "0.12.0" >"$dir/packages/php/VERSION"
   cat >"$dir/packages/php/composer.json" <<'EOF'
 {
   "name": "b4moss/crudian",
-  "version": "0.12.0",
   "require": { "php": ">=8.3" }
 }
 EOF

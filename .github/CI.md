@@ -95,11 +95,13 @@ Required status check for branch protection should be **`CI result`** (not indiv
 
 ### PHP (`publish-composer.yml`)
 
-- Version: `packages/php/composer.json` `version` (first public line: **0.12.0**)
-- Tag: **`packages/php/vX.Y.Z`**
-- Script: `.github/scripts/should-publish-php.sh` — skip if no tag, tag not ancestor, or GitHub Release already exists.
-- On publish: `composer phpstan` + `composer test`, create GitHub Release, optional Packagist update ping when `PACKAGIST_TOKEN` / `PACKAGIST_USERNAME` secrets are set.
-- Packagist package name: **`b4moss/crudian`**. Root npm tag `v*` alone does not publish PHP.
+- Version file: `packages/php/VERSION` (first public line: **0.12.0**). Do **not** put `version` in `composer.json` (Packagist uses git tags)
+- Monorepo tag: **`packages/php/vX.Y.Z`**
+- Dist repository: **[b4moss/crudian-php](https://github.com/b4moss/crudian-php)** (`git subtree split` of `packages/php`). Packagist SemVer tags: **`vX.Y.Z`**
+- Script: `.github/scripts/should-publish-php.sh` — skip if no tag, tag not ancestor, or monorepo GitHub Release already exists
+- Push: `.github/scripts/push-php-subtree.sh` (requires secret **`CRUDIAN_PHP_TOKEN`** with `contents:write` on `b4moss/crudian-php`)
+- On publish: `composer phpstan` + `composer test` → subtree push → monorepo Release + dist Release → optional Packagist ping (`PACKAGIST_USERNAME` / `PACKAGIST_TOKEN`). Register **https://github.com/b4moss/crudian-php** on Packagist (not the monorepo URL)
+- Root npm tag `v*` alone does not publish PHP
 
 ## Explicit non-goals
 

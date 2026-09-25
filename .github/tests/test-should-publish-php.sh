@@ -5,15 +5,28 @@ source "$(cd "$(dirname "$0")" && pwd)/helpers.sh"
 
 echo "== should-publish-php =="
 
-# --- missing composer.json → skip ---
+# --- missing VERSION → skip ---
 {
   FIX="$(make_fixture)"
-  rm -f "$FIX/packages/php/composer.json"
+  rm -f "$FIX/packages/php/VERSION"
   git -C "$FIX" add -A
-  git -C "$FIX" commit -q -m "drop composer.json" || true
+  git -C "$FIX" commit -q -m "drop VERSION" || true
   out="$(mktemp)"
   run_decide_php "$FIX" "$out" >/tmp/php-decide-1.log || true
-  assert_eq "missing composer.json → skip" "$(output_get "$out" skip)" "true"
+  assert_eq "missing VERSION → skip" "$(output_get "$out" skip)" "true"
+  cleanup_fixture "$FIX"
+  rm -f "$out"
+}
+
+# --- empty VERSION → skip ---
+{
+  FIX="$(make_fixture)"
+  : >"$FIX/packages/php/VERSION"
+  git -C "$FIX" add -A
+  git -C "$FIX" commit -q -m "empty VERSION"
+  out="$(mktemp)"
+  run_decide_php "$FIX" "$out" >/tmp/php-decide-1b.log || true
+  assert_eq "empty VERSION → skip" "$(output_get "$out" skip)" "true"
   cleanup_fixture "$FIX"
   rm -f "$out"
 }
@@ -52,6 +65,7 @@ echo "== should-publish-php =="
   run_decide_php "$FIX" "$out" >/tmp/php-decide-4.log
   assert_eq "tag without release → publish" "$(output_get "$out" skip)" "false"
   assert_eq "php tag emitted" "$(output_get "$out" tag)" "packages/php/v0.12.0"
+  assert_eq "php dist_tag emitted" "$(output_get "$out" dist_tag)" "v0.12.0"
   assert_eq "php version emitted" "$(output_get "$out" version)" "0.12.0"
   cleanup_fixture "$FIX"
   rm -f "$out"

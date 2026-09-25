@@ -1,11 +1,12 @@
 name: Publish Composer (PHP)
 
-# Makes Packagist package b4moss/crudian discoverable when packages/php is tagged.
-# Tag form: packages/php/vX.Y.Z (must match packages/php/composer.json version).
+# Publishes Packagist package b4moss/crudian via subtree mirror b4moss/crudian-php.
+# Monorepo tag: packages/php/vX.Y.Z (must match packages/php/VERSION).
+# Dist repo tags: vX.Y.Z (Packagist SemVer).
 # See .github/CI.md
 #
-# Packagist auto-updates from the GitHub Release / webhook. This workflow creates
-# the Release and optionally hits the Packagist update API when PACKAGIST_TOKEN is set.
+# Required secret: CRUDIAN_PHP_TOKEN — PAT with contents:write on b4moss/crudian-php
+# Optional: PACKAGIST_USERNAME + PACKAGIST_TOKEN — Packagist update API ping
 
 on:
   push:
@@ -23,12 +24,9 @@ permissions:
 
 jobs:
   publish:
-    name: publish b4moss/crudian (PHP)
+    name: publish b4moss/crudian (PHP subtree)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    defaults:
-      run:
-        working-directory: packages/php
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -37,7 +35,6 @@ jobs:
 
       - name: Decide whether to publish
         id: decide
-        working-directory: ${{ github.workspace }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: bash .github/scripts/should-publish-php.sh
@@ -53,32 +50,57 @@ jobs:
 
       - name: Install
         if: steps.decide.outputs.skip != 'true'
+        working-directory: packages/php
         run: composer install --no-interaction --prefer-dist
 
       - name: PHPStan
         if: steps.decide.outputs.skip != 'true'
+        working-directory: packages/php
         run: composer phpstan
 
       - name: Test
         if: steps.decide.outputs.skip != 'true'
+        working-directory: packages/php
         run: composer test
 
-      - name: Create GitHub Release
+      - name: Require CRUDIAN_PHP_TOKEN
         if: steps.decide.outputs.skip != 'true'
-        working-directory: ${{ github.workspace }}
+        env:
+          CRUDIAN_PHP_TOKEN: ${{ secrets.CRUDIAN_PHP_TOKEN }}
+        run: |
+          if [[ -z "${CRUDIAN_PHP_TOKEN:-}" ]]; then
+            echo "CRUDIAN_PHP_TOKEN secret is required to push subtree to b4moss/crudian-php" >&2
+            exit 1
+          fi
+
+      - name: Push subtree to b4moss/crudian-php
+        if: steps.decide.outputs.skip != 'true'
+        env:
+          VERSION: ${{ steps.decide.outputs.version }}
+          DIST_TAG: ${{ steps.decide.outputs.dist_tag }}
+          DIST_TOKEN: ${{ secrets.CRUDIAN_PHP_TOKEN }}
+          DIST_REPO: b4moss/crudian-php
+        run: bash .github/scripts/push-php-subtree.sh
+
+      - name: Create GitHub Release (monorepo marker)
+        if: steps.decide.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.decide.outputs.tag }}
           VERSION: ${{ steps.decide.outputs.version }}
+          DIST_TAG: ${{ steps.decide.outputs.dist_tag }}
         run: |
           set -euo pipefail
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release already exists: $TAG (skip create)"
             exit 0
           fi
+          notes="Composer package \`b4moss/crudian\` v${VERSION}.
+          Dist: https://github.com/b4moss/crudian-php/releases/tag/${DIST_TAG}
+          Packagist: https://packagist.org/packages/b4moss/crudian"
           if ! out="$(gh release create "$TAG" \
             --title "PHP b4moss/crudian v${VERSION}" \
-            --notes "Composer package \`b4moss/crudian\` v${VERSION} (PDO + libSQL preview)." \
+            --notes "$notes" \
             --verify-tag 2>&1)"; then
             echo "$out"
             if echo "$out" | grep -qi 'already exists'; then
@@ -88,14 +110,41 @@ jobs:
             exit 1
           fi
 
+      - name: Create GitHub Release (crudian-php)
+        if: steps.decide.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.CRUDIAN_PHP_TOKEN }}
+          DIST_TAG: ${{ steps.decide.outputs.dist_tag }}
+          VERSION: ${{ steps.decide.outputs.version }}
+        run: |
+          set -euo pipefail
+          if gh release view "$DIST_TAG" --repo b4moss/crudian-php >/dev/null 2>&1; then
+            echo "Dist release already exists: $DIST_TAG"
+            exit 0
+          fi
+          if ! out="$(gh release create "$DIST_TAG" \
+            --repo b4moss/crudian-php \
+            --title "b4moss/crudian v${VERSION}" \
+            --notes "Packagist distribution of \`b4moss/crudian\` v${VERSION} (subtree from monorepo \`packages/php\`)." \
+            --verify-tag 2>&1)"; then
+            echo "$out"
+            if echo "$out" | grep -qi 'already exists'; then
+              exit 0
+            fi
+            exit 1
+          fi
+
       - name: Ping Packagist update
-        if: steps.decide.outputs.skip != 'true' && env.PACKAGIST_TOKEN != ''
-        working-directory: ${{ github.workspace }}
+        if: steps.decide.outputs.skip != 'true'
         env:
           PACKAGIST_TOKEN: ${{ secrets.PACKAGIST_TOKEN }}
           PACKAGIST_USERNAME: ${{ secrets.PACKAGIST_USERNAME }}
         run: |
           set -euo pipefail
+          if [[ -z "${PACKAGIST_TOKEN:-}" || -z "${PACKAGIST_USERNAME:-}" ]]; then
+            echo "PACKAGIST_USERNAME / PACKAGIST_TOKEN not set; skip Packagist ping (use GitHub webhook on crudian-php)."
+            exit 0
+          fi
           curl -sS -X POST "https://packagist.org/api/update-package?username=${PACKAGIST_USERNAME}&apiToken=${PACKAGIST_TOKEN}" \
             -H 'Content-Type: application/json' \
-            -d '{"repository":{"url":"https://github.com/b4moss/crudian"}}'
+            -d '{"repository":{"url":"https://github.com/b4moss/crudian-php"}}'

@@ -61,4 +61,6 @@ composer phpstan
 
 ## Release
 
-Version in `composer.json`. Git tag **`packages/php/vX.Y.Z`**. Packagist package name: `b4moss/crudian`.
+Version file: `VERSION` (not `composer.json`).  
+Monorepo git tag: **`packages/php/vX.Y.Z`**.  
+Packagist dist: [b4moss/crudian-php](https://github.com/b4moss/crudian-php) tagged **`vX.Y.Z`** via subtree CD.

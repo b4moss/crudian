@@ -184,7 +184,7 @@ Laravel 実装は **無期限延期**。設計・実装仕様の対象外とし�
 - **言語（配布物）ごとに独立した SemVer** を持つ
   - JS/TS: `packages/js/package.json` → npm `@b4moss/crudian`（例: `0.6.0`）。git タグ `vX.Y.Z`
   - Go: `packages/go/VERSION` → module `github.com/b4moss/crudian/go`（例: 初版 `0.7.0`）。git タグ `packages/go/vX.Y.Z`
-  - PHP: `packages/php/composer.json` → Packagist `b4moss/crudian`。git タグ `packages/php/vX.Y.Z`（未実装）
+  - PHP: `packages/php/VERSION` → Packagist `b4moss/crudian`（配布リポ `b4moss/crudian-php`）。git タグ monorepo `packages/php/vX.Y.Z` / dist `vX.Y.Z`
 - **同一言語パッケージ内**ではアダプタ別バージョンは切らない（JS の bun-sqlite / drizzle / prisma / libsql、Go の gorm / libsql、PHP の PDO / libSQL はいずれも単一配布物に同梱）
 - 言語間で版が揃わない・飛ぶことは **許容**（例: npm が `0.6.0` のまま Go だけ `0.7.0` を初公開）
 - マイルストーン名（リポジトリ計画の v0.7.0 等）は作業単位であり、各言語の公開 SemVer と 1:1 である必要はない
@@ -194,7 +194,7 @@ Laravel 実装は **無期限延期**。設計・実装仕様の対象外とし�
 | 言語 | 形態 | 備考 |
 |------|------|------|
 | JS/TS | npm（`@b4moss/crudian`） | レジストリへ publish。CD: `release` + タグ `v*` |
-| PHP | Packagist（`b4moss/crudian`） | 単一 Composer パッケージ。CD: タグ `packages/php/v*`（[`.github/CI.md`](../.github/CI.md)） |
+| PHP | Packagist（`b4moss/crudian`） | 配布リポ [b4moss/crudian-php](https://github.com/b4moss/crudian-php)（subtree）。CD: monorepo タグ `packages/php/v*`（[`.github/CI.md`](../.github/CI.md)） |
 | Go | Go module（module path = 正） | npm 相当の独自レジストリは使わない。消費は `go get` + git タグ。CD は Release 作成と proxy への ping のみ（[`.github/CI.md`](../.github/CI.md)） |
 
 思想の正典は charter の薄い DDD と iron-rule の `internal/db/crud`（および nook の `CrudTrait`）。本ライブラリはその共通 CRUD を言語横断でパッケージ化する。
