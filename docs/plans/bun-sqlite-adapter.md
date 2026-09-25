@@ -10,7 +10,7 @@
 - 正典実装の思想は **iron-rule の `internal/db/crud`**（および nook の `CrudTrait`）
 - 配布形態:
   - JS/TS → **npm**（`@b4moss/crudian`）
-  - PHP → **Composer**（Packagist `b4moss/crudian` 単一。Laravel パッケージではない）
+  - PHP → **Composer**（Packagist `b4moss/crudian` 単一）
   - Go → **Go module**
 - 取り込み先は各言語の **別リポのテンプレート**
 - biogon / orgboss など charter 以前のプロダクトは対象外の歴史的経緯として扱う
