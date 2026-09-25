@@ -1,7 +1,7 @@
 # Roadmap — bun:sqlite CRUD Trait
 
 `@b4moss/crudian/bun-sqlite` を参照実装として、機能をマイルストーンに割り当てる。  
-仕様の正は [`docs/main.md`](../main.md)。設計詳細は [`bun-sqlite-adapter.md`](./bun-sqlite-adapter.md)。libSQL は [`libsql-adapter.md`](./libsql-adapter.md)。Go は [`go-module.md`](./go-module.md)。TypeORM は [`typeorm-adapter.md`](./typeorm-adapter.md)。
+仕様の正は [`docs/main.md`](main.md)。設計詳細は [`bun-sqlite-adapter.md`](plans/bun-sqlite-adapter.md)。libSQL は [`libsql-adapter.md`](plans/libsql-adapter.md)。Go は [`go-module.md`](plans/go-module.md)。TypeORM は [`typeorm-adapter.md`](plans/typeorm-adapter.md)。
 
 ## 方針
 
@@ -123,7 +123,7 @@ PHP / Go パッケージは本マイルストーンの必須範囲外（契約�
 | 入口 | `createCrud(client)` | 呼び出し側が作った Client を注入。生 client を `crud.db` で公開 |
 | 実装方針 | `createAsyncSqliteCrud` に薄い executor を渡す | prisma アダプタと同型 |
 | テスト | 一時ファイル DB + `node:test` | [`docs/tests/v0.6.0.md`](../tests/v0.6.0.md)。`:memory:` は TX と相性が悪いためテストではファイルを使う |
-| 設計 | [`libsql-adapter.md`](./libsql-adapter.md) | サブパスは商業名 Turso ではなく libSQL |
+| 設計 | [`libsql-adapter.md`](plans/libsql-adapter.md) | サブパスは商業名 Turso ではなく libSQL |
 
 **対象外:** `@tursodatabase/serverless`、リモート Cloud 前提の E2E、TypeORM（#43）
 
@@ -150,7 +150,7 @@ JS 契約を Go へ移植する（#48）。**Go の公開初版は `0.7.0`**（`
 | 配布 | Go module path + git タグ | タグ **`packages/go/v0.7.0`**。npm 風レジストリへの upload はなし |
 | テスト | [`docs/tests/v0.7.0.md`](../tests/v0.7.0.md) | Go 1.26 + `testing` |
 | CI/CD | [`.github/CI.md`](../../.github/CI.md) | 変更時のみ `packages/go` を lint/test。CD は当該タグ時のみ |
-| 設計 | [`go-module.md`](./go-module.md) | |
+| 設計 | [`go-module.md`](plans/go-module.md) | |
 
 **対象外（v0.7.0）:** GORM の MySQL / PostgreSQL（**将来対応**）、可変 PK（#72）、PHP、製品 E2E の CI 実行
 
@@ -193,7 +193,7 @@ JS 契約を Go へ移植する（#48）。**Go の公開初版は `0.7.0`**（`
 | ランタイム | Node 24+ **と** Bun | 両方で `test:typeorm` |
 | 実装 | QueryBuilder / Repository を積極利用 | |
 | codecov | カバレッジ 75%（#96） | 計測修正 → 不足分テスト |
-| 設計 | [`typeorm-adapter.md`](./typeorm-adapter.md) | |
+| 設計 | [`typeorm-adapter.md`](plans/typeorm-adapter.md) | |
 | テスト | [`docs/tests/v0.11.0.md`](../tests/v0.11.0.md) | |
 
 **対象外（v0.11.0）:** Entity 第一級 API、関係グラフ横断 CRUD、Cloud 専用 E2E、PHP
