@@ -93,14 +93,15 @@ Required status check for branch protection should be **`CI result`** (not indiv
 - **No npm-style registry upload.** Canonical identity is the module path + git tag; `go get` resolves them (proxy is a cache).
 - Independent of npm: publishing Go `0.7.0` does not require bumping `@b4moss/crudian` past `0.6.0`. Root tag `v0.7.0` alone does not publish Go.
 
-### PHP (`publish-composer.yml`)
+### PHP (`publish-composer.yml` + dist `sync-from-monorepo.yml`)
 
 - Version file: `packages/php/VERSION` (first public line: **0.12.0**). Do **not** put `version` in `composer.json` (Packagist uses git tags)
 - Monorepo tag: **`packages/php/vX.Y.Z`**
-- Dist repository: **[b4moss/crudian-php](https://github.com/b4moss/crudian-php)** (`git subtree split` of `packages/php`). Packagist SemVer tags: **`vX.Y.Z`**
-- Script: `.github/scripts/should-publish-php.sh` — skip if no tag, tag not ancestor, or monorepo GitHub Release already exists
-- Push: `.github/scripts/push-php-subtree.sh` (requires secret **`CRUDIAN_PHP_TOKEN`** with `contents:write` on `b4moss/crudian-php`)
-- On publish: `composer phpstan` + `composer test` → subtree push → monorepo Release + dist Release → optional Packagist ping (`PACKAGIST_USERNAME` / `PACKAGIST_TOKEN`). Register **https://github.com/b4moss/crudian-php** on Packagist (not the monorepo URL)
+- Dist repository: **[b4moss/crudian-php](https://github.com/b4moss/crudian-php)** (mirror of `packages/php`). Packagist SemVer tags: **`vX.Y.Z`**
+- Monorepo script: `.github/scripts/should-publish-php.sh` — skip if no tag, tag not ancestor, or monorepo GitHub Release already exists
+- **Monorepo job:** `composer phpstan` + `composer test` → create monorepo Release `packages/php/vX.Y.Z` (gate marker only). **No cross-repo PAT.**
+- **Dist job** (`b4moss/crudian-php` → `.github/workflows/sync-from-monorepo.yml`): when that Release exists and dist lacks `vX.Y.Z`, mirror `packages/php` with **`GITHUB_TOKEN`**, tag, create dist Release, optional Packagist ping. Triggers: schedule `*/10`, `workflow_dispatch`, optional `repository_dispatch` (`php-publish`)
+- Register **https://github.com/b4moss/crudian-php** on Packagist (not the monorepo URL). Org secrets `PACKAGIST_*` must be granted to `crudian-php` if using the update API (else Packagist GitHub webhook)
 - Root npm tag `v*` alone does not publish PHP
 
 ## Explicit non-goals

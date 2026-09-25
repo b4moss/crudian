@@ -1,12 +1,12 @@
 name: Publish Composer (PHP)
 
-# Publishes Packagist package b4moss/crudian via subtree mirror b4moss/crudian-php.
+# Gates Packagist package b4moss/crudian and creates the monorepo Release marker.
+# Dist sync (subtree mirror → tags → Packagist) is owned by b4moss/crudian-php
+# (.github/workflows/sync-from-monorepo.yml) using that repo's GITHUB_TOKEN — no PAT.
+#
 # Monorepo tag: packages/php/vX.Y.Z (must match packages/php/VERSION).
 # Dist repo tags: vX.Y.Z (Packagist SemVer).
 # See .github/CI.md
-#
-# Required secret: CRUDIAN_PHP_TOKEN — PAT with contents:write on b4moss/crudian-php
-# Optional: PACKAGIST_USERNAME + PACKAGIST_TOKEN — Packagist update API ping
 
 on:
   push:
@@ -24,7 +24,7 @@ permissions:
 
 jobs:
   publish:
-    name: publish b4moss/crudian (PHP subtree)
+    name: gate + release marker (PHP)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -63,25 +63,6 @@ jobs:
         working-directory: packages/php
         run: composer test
 
-      - name: Require CRUDIAN_PHP_TOKEN
-        if: steps.decide.outputs.skip != 'true'
-        env:
-          CRUDIAN_PHP_TOKEN: ${{ secrets.CRUDIAN_PHP_TOKEN }}
-        run: |
-          if [[ -z "${CRUDIAN_PHP_TOKEN:-}" ]]; then
-            echo "CRUDIAN_PHP_TOKEN secret is required to push subtree to b4moss/crudian-php" >&2
-            exit 1
-          fi
-
-      - name: Push subtree to b4moss/crudian-php
-        if: steps.decide.outputs.skip != 'true'
-        env:
-          VERSION: ${{ steps.decide.outputs.version }}
-          DIST_TAG: ${{ steps.decide.outputs.dist_tag }}
-          DIST_TOKEN: ${{ secrets.CRUDIAN_PHP_TOKEN }}
-          DIST_REPO: b4moss/crudian-php
-        run: bash .github/scripts/push-php-subtree.sh
-
       - name: Create GitHub Release (monorepo marker)
         if: steps.decide.outputs.skip != 'true'
         env:
@@ -96,7 +77,9 @@ jobs:
             exit 0
           fi
           notes="Composer package \`b4moss/crudian\` v${VERSION}.
-          Dist: https://github.com/b4moss/crudian-php/releases/tag/${DIST_TAG}
+
+          Dist sync is owned by https://github.com/b4moss/crudian-php (Actions + GITHUB_TOKEN).
+          After this Release exists, that workflow mirrors \`packages/php\` and tags \`${DIST_TAG}\`.
           Packagist: https://packagist.org/packages/b4moss/crudian"
           if ! out="$(gh release create "$TAG" \
             --title "PHP b4moss/crudian v${VERSION}" \
@@ -109,42 +92,3 @@ jobs:
             fi
             exit 1
           fi
-
-      - name: Create GitHub Release (crudian-php)
-        if: steps.decide.outputs.skip != 'true'
-        env:
-          GH_TOKEN: ${{ secrets.CRUDIAN_PHP_TOKEN }}
-          DIST_TAG: ${{ steps.decide.outputs.dist_tag }}
-          VERSION: ${{ steps.decide.outputs.version }}
-        run: |
-          set -euo pipefail
-          if gh release view "$DIST_TAG" --repo b4moss/crudian-php >/dev/null 2>&1; then
-            echo "Dist release already exists: $DIST_TAG"
-            exit 0
-          fi
-          if ! out="$(gh release create "$DIST_TAG" \
-            --repo b4moss/crudian-php \
-            --title "b4moss/crudian v${VERSION}" \
-            --notes "Packagist distribution of \`b4moss/crudian\` v${VERSION} (subtree from monorepo \`packages/php\`)." \
-            --verify-tag 2>&1)"; then
-            echo "$out"
-            if echo "$out" | grep -qi 'already exists'; then
-              exit 0
-            fi
-            exit 1
-          fi
-
-      - name: Ping Packagist update
-        if: steps.decide.outputs.skip != 'true'
-        env:
-          PACKAGIST_TOKEN: ${{ secrets.PACKAGIST_TOKEN }}
-          PACKAGIST_USERNAME: ${{ secrets.PACKAGIST_USERNAME }}
-        run: |
-          set -euo pipefail
-          if [[ -z "${PACKAGIST_TOKEN:-}" || -z "${PACKAGIST_USERNAME:-}" ]]; then
-            echo "PACKAGIST_USERNAME / PACKAGIST_TOKEN not set; skip Packagist ping (use GitHub webhook on crudian-php)."
-            exit 0
-          fi
-          curl -sS -X POST "https://packagist.org/api/update-package?username=${PACKAGIST_USERNAME}&apiToken=${PACKAGIST_TOKEN}" \
-            -H 'Content-Type: application/json' \
-            -d '{"repository":{"url":"https://github.com/b4moss/crudian-php"}}'

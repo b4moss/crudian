@@ -63,4 +63,4 @@ composer phpstan
 
 Version file: `VERSION` (not `composer.json`).  
 Monorepo git tag: **`packages/php/vX.Y.Z`**.  
-Packagist dist: [b4moss/crudian-php](https://github.com/b4moss/crudian-php) tagged **`vX.Y.Z`** via subtree CD.
+Packagist dist: [b4moss/crudian-php](https://github.com/b4moss/crudian-php) tagged **`vX.Y.Z`** by that repo’s sync workflow (`GITHUB_TOKEN`, after monorepo Release).

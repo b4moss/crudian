@@ -75,7 +75,7 @@ composer require b4moss/crudian
 
 Usage: [`packages/php/README.md`](./packages/php/README.md). Acceptance: [`docs/tests/v0.12.0.md`](./docs/tests/v0.12.0.md).
 
-**Release:** tag `packages/php/vX.Y.Z` matching `packages/php/VERSION`. CD splits `packages/php` to **[b4moss/crudian-php](https://github.com/b4moss/crudian-php)** with Packagist tag `vX.Y.Z`. Packagist package name `b4moss/crudian`.
+**Release:** tag `packages/php/vX.Y.Z` matching `packages/php/VERSION`. Monorepo CD gates tests and creates the Release marker; **[b4moss/crudian-php](https://github.com/b4moss/crudian-php)** mirrors `packages/php` and tags `vX.Y.Z` for Packagist (`b4moss/crudian`).
 
 ## Docs
 

@@ -194,7 +194,7 @@ Laravel 実装は **無期限延期**。設計・実装仕様の対象外とし�
 | 言語 | 形態 | 備考 |
 |------|------|------|
 | JS/TS | npm（`@b4moss/crudian`） | レジストリへ publish。CD: `release` + タグ `v*` |
-| PHP | Packagist（`b4moss/crudian`） | 配布リポ [b4moss/crudian-php](https://github.com/b4moss/crudian-php)（subtree）。CD: monorepo タグ `packages/php/v*`（[`.github/CI.md`](../.github/CI.md)） |
+| PHP | Packagist（`b4moss/crudian`） | 配布リポ [b4moss/crudian-php](https://github.com/b4moss/crudian-php)（mirror）。CD: monorepo タグ `packages/php/v*` → dist が `GITHUB_TOKEN` で同期（[`.github/CI.md`](../.github/CI.md)） |
 | Go | Go module（module path = 正） | npm 相当の独自レジストリは使わない。消費は `go get` + git タグ。CD は Release 作成と proxy への ping のみ（[`.github/CI.md`](../.github/CI.md)） |
 
 思想の正典は charter の薄い DDD と iron-rule の `internal/db/crud`（および nook の `CrudTrait`）。本ライブラリはその共通 CRUD を言語横断でパッケージ化する。

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Decide whether the PHP Composer package should be published from HEAD.
 # Monorepo tag: packages/php/vX.Y.Z (must match packages/php/VERSION).
-# Dist repo:    b4moss/crudian-php with Packagist tags vX.Y.Z (via subtree split).
+# Dist repo:    b4moss/crudian-php with Packagist tags vX.Y.Z (synced by dist Actions).
 #
 # Outputs (GITHUB_OUTPUT when set):
 #   skip=true|false
@@ -58,7 +58,7 @@ if [[ "$TAG_COMMIT" != "$HEAD_COMMIT" ]] &&
   skip "Tag ${TAG} (${TAG_COMMIT}) is not an ancestor of HEAD; skip PHP publish."
 fi
 
-echo "Using tag ${TAG} at ${TAG_COMMIT} (HEAD=${HEAD_COMMIT}). Dist tag ${DIST_TAG} → b4moss/crudian-php."
+echo "Using tag ${TAG} at ${TAG_COMMIT} (HEAD=${HEAD_COMMIT}). Dist tag ${DIST_TAG} will be created by b4moss/crudian-php after this Release."
 
 if command -v gh >/dev/null 2>&1; then
   if gh release view "$TAG" >/dev/null 2>&1; then
@@ -66,5 +66,5 @@ if command -v gh >/dev/null 2>&1; then
   fi
 fi
 
-echo "Will publish PHP package at ${TAG} (subtree → crudian-php ${DIST_TAG})."
+echo "Will publish PHP package at ${TAG} (monorepo Release gate; dist syncs ${DIST_TAG})."
 emit "skip" "false"

@@ -19,7 +19,7 @@ JS / Go 版の CRUD 契約を PHP へ移植する方針のメモ。
 |------|-----|
 | Packagist | `b4moss/crudian` |
 | 配置 | `packages/php/` |
-| 配布リポ | `b4moss/crudian-php`（subtree。Packagist 登録先） |
+| 配布リポ | `b4moss/crudian-php`（monorepo Release 後に dist Actions が mirror。Packagist 登録先） |
 | 名前空間 | `B4moss\Crudian\` |
 | PDO | `B4moss\Crudian\Pdo\` |
 | libSQL | `B4moss\Crudian\Libsql\` |
