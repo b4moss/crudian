@@ -43,10 +43,11 @@ assert_file_has() {
 make_fixture() {
   local dir
   dir="$(mktemp -d "${TMPDIR:-/tmp}/crudian-gate.XXXXXX")"
-  mkdir -p "$dir/packages/js/dist" "$dir/packages/go" "$dir/.github/scripts" "$dir/bin"
+  mkdir -p "$dir/packages/js/dist" "$dir/packages/go" "$dir/packages/php" "$dir/.github/scripts" "$dir/bin"
 
   cp "$SCRIPTS_DIR/should-publish-crudian.sh" "$dir/.github/scripts/"
   cp "$SCRIPTS_DIR/should-publish-go.sh" "$dir/.github/scripts/"
+  cp "$SCRIPTS_DIR/should-publish-php.sh" "$dir/.github/scripts/"
   cp "$SCRIPTS_DIR/ci-skip-if-ancestor-passed.sh" "$dir/.github/scripts/"
   chmod +x "$dir/.github/scripts/"*.sh
 
@@ -63,6 +64,13 @@ EOF
   echo "readme local" >"$dir/packages/js/README.md"
   echo "0.7.0" >"$dir/packages/go/VERSION"
   echo 'module github.com/b4moss/crudian/go' >"$dir/packages/go/go.mod"
+  echo "0.12.0" >"$dir/packages/php/VERSION"
+  cat >"$dir/packages/php/composer.json" <<'EOF'
+{
+  "name": "b4moss/crudian",
+  "require": { "php": ">=8.3" }
+}
+EOF
   mkdir -p "$dir/.github/workflows"
   echo "name: CI" >"$dir/.github/workflows/ci.yml"
 
@@ -261,6 +269,18 @@ run_decide_go() {
     export GITHUB_OUTPUT="$out"
     : >"$out"
     bash .github/scripts/should-publish-go.sh
+  )
+}
+
+run_decide_php() {
+  local dir="$1"
+  local out="$2"
+  (
+    cd "$dir"
+    use_fixture_path "$dir"
+    export GITHUB_OUTPUT="$out"
+    : >"$out"
+    bash .github/scripts/should-publish-php.sh
   )
 }
 
