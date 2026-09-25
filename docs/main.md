@@ -124,16 +124,18 @@ Composer / Packagist 向け。**言語あたり 1 配布物**（JS / Go と同�
 
 - 入口は呼び出し側が作った接続の注入（内部で接続を開かない）
 - MySQL / Postgres / SQLite は **PDO**（ORM 不使用）。方言差は Dialect で吸収する
-- libSQL は **公式 SDK**（PDO ではない）
-- 同一 `composer.json` に共有契約（Where / Dialect / CRUD）とアダプタを同梱する
+- libSQL は公式 SDK（`turso/libsql` 等。PDO ではない）を **テクニカルプレビューとして採用**する
+- PDO / libSQL とも、注入クライアントを **薄い Executor** に橋渡しし、共有 CRUD は Executor + Dialect のみに依存する（Go `libsql` と同型）
+- 同一 `composer.json` に共有契約（Where / Dialect / CRUD / Executor）とアダプタを同梱する
 
 Laravel 実装は **無期限延期**。設計・実装仕様の対象外とし、レイアウトや API に考慮しない。
 
 | 層 | 役割 |
 |----|------|
 | 共有 | 契約・Where・Dialect・CRUD |
-| PDO アダプタ | `PDO` 注入。Dialect で SQLite / Postgres / MySQL |
-| libSQL アダプタ | 公式 SDK 接続の注入 |
+| Executor | Dialect 非依存の SQL 実行（Run / Get / All / Transaction）。具象はアダプタ側 |
+| PDO アダプタ | `PDO` → 薄い Executor。Dialect で SQLite / Postgres / MySQL |
+| libSQL アダプタ | 公式 SDK 接続 → 薄い Executor（technical preview。SDK / FFI 前提の制約はアダプタ境界に閉じる） |
 
 配置の正は **`packages/php/`**（単一 `composer.json`）。旧メモの DB 別ディレクトリ分割は採用しない。
 
