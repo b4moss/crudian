@@ -116,14 +116,31 @@ import { createCrud } from "@b4moss/crudian/bun-sqlite"
 const crud = createCrud(db)
 ```
 
-### 他言語
+### PHP（単一 Composer パッケージ）
+
+パッケージ名: **`b4moss/crudian`**（`packages/php`）
+
+Composer / Packagist 向け。**言語あたり 1 配布物**（JS / Go と同じ）。アダプタ別の Packagist パッケージ（`pdo-mysql` 等）は切らない。
+
+- 入口は呼び出し側が作った接続の注入（内部で接続を開かない）
+- MySQL / Postgres / SQLite は **PDO**（ORM 不使用）。方言差は Dialect で吸収する
+- libSQL は **公式 SDK**（PDO ではない）
+- 同一 `composer.json` に共有契約（Where / Dialect / CRUD）とアダプタを同梱する
+
+Laravel 実装は **無期限延期**。設計・実装仕様の対象外とし、レイアウトや API に考慮しない。
+
+| 層 | 役割 |
+|----|------|
+| 共有 | 契約・Where・Dialect・CRUD |
+| PDO アダプタ | `PDO` 注入。Dialect で SQLite / Postgres / MySQL |
+| libSQL アダプタ | 公式 SDK 接続の注入 |
+
+配置の正は **`packages/php/`**（単一 `composer.json`）。旧メモの DB 別ディレクトリ分割は採用しない。
+
+### Go
 
 | パス | 対象 |
 |------|------|
-| `packages/php/laravel` | PHP Laravel（Eloquent） |
-| `packages/php/pdo-mysql` | 生 PHP + PDO MySQL |
-| `packages/php/pdo-postgres` | 生 PHP + PDO Postgres |
-| `packages/php/pdo-sqlite` | 生 PHP + PDO SQLite |
 | `packages/go` | Go module `github.com/b4moss/crudian/go`（`crudian` / `gorm` / `libsql`） |
 
 ## ランタイム / テスト
@@ -163,7 +180,8 @@ const crud = createCrud(db)
 - **言語（配布物）ごとに独立した SemVer** を持つ
   - JS/TS: `packages/js/package.json` → npm `@b4moss/crudian`（例: `0.6.0`）。git タグ `vX.Y.Z`
   - Go: `packages/go/VERSION` → module `github.com/b4moss/crudian/go`（例: 初版 `0.7.0`）。git タグ `packages/go/vX.Y.Z`
-- **同一言語パッケージ内**ではアダプタ別バージョンは切らない（JS の bun-sqlite / drizzle / prisma / libsql は単一 npm 版に同梱）
+  - PHP: `packages/php/composer.json` → Packagist `b4moss/crudian`。git タグ `packages/php/vX.Y.Z`（未実装）
+- **同一言語パッケージ内**ではアダプタ別バージョンは切らない（JS の bun-sqlite / drizzle / prisma / libsql、Go の gorm / libsql、PHP の PDO / libSQL はいずれも単一配布物に同梱）
 - 言語間で版が揃わない・飛ぶことは **許容**（例: npm が `0.6.0` のまま Go だけ `0.7.0` を初公開）
 - マイルストーン名（リポジトリ計画の v0.7.0 等）は作業単位であり、各言語の公開 SemVer と 1:1 である必要はない
 
@@ -172,7 +190,7 @@ const crud = createCrud(db)
 | 言語 | 形態 | 備考 |
 |------|------|------|
 | JS/TS | npm（`@b4moss/crudian`） | レジストリへ publish。CD: `release` + タグ `v*` |
-| PHP | Composer / Laravel package（未実装） | |
+| PHP | Packagist（`b4moss/crudian`） | 単一 Composer パッケージ。未実装。CD は後続 |
 | Go | Go module（module path = 正） | npm 相当の独自レジストリは使わない。消費は `go get` + git タグ。CD は Release 作成と proxy への ping のみ（[`.github/CI.md`](../.github/CI.md)） |
 
 思想の正典は charter の薄い DDD と iron-rule の `internal/db/crud`（および nook の `CrudTrait`）。本ライブラリはその共通 CRUD を言語横断でパッケージ化する。
