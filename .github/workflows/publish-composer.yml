@@ -1,0 +1,101 @@
+name: Publish Composer (PHP)
+
+# Makes Packagist package b4moss/crudian discoverable when packages/php is tagged.
+# Tag form: packages/php/vX.Y.Z (must match packages/php/composer.json version).
+# See .github/CI.md
+#
+# Packagist auto-updates from the GitHub Release / webhook. This workflow creates
+# the Release and optionally hits the Packagist update API when PACKAGIST_TOKEN is set.
+
+on:
+  push:
+    branches:
+      - release
+    tags:
+      - "packages/php/v*"
+
+concurrency:
+  group: publish-php-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: publish b4moss/crudian (PHP)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: packages/php
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Decide whether to publish
+        id: decide
+        working-directory: ${{ github.workspace }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/should-publish-php.sh
+
+      - name: Setup PHP
+        if: steps.decide.outputs.skip != 'true'
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: pdo_sqlite, ffi
+          coverage: none
+          tools: composer
+
+      - name: Install
+        if: steps.decide.outputs.skip != 'true'
+        run: composer install --no-interaction --prefer-dist
+
+      - name: PHPStan
+        if: steps.decide.outputs.skip != 'true'
+        run: composer phpstan
+
+      - name: Test
+        if: steps.decide.outputs.skip != 'true'
+        run: composer test
+
+      - name: Create GitHub Release
+        if: steps.decide.outputs.skip != 'true'
+        working-directory: ${{ github.workspace }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.decide.outputs.tag }}
+          VERSION: ${{ steps.decide.outputs.version }}
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release already exists: $TAG (skip create)"
+            exit 0
+          fi
+          if ! out="$(gh release create "$TAG" \
+            --title "PHP b4moss/crudian v${VERSION}" \
+            --notes "Composer package \`b4moss/crudian\` v${VERSION} (PDO + libSQL preview)." \
+            --verify-tag 2>&1)"; then
+            echo "$out"
+            if echo "$out" | grep -qi 'already exists'; then
+              echo "Release appeared concurrently; treating as success."
+              exit 0
+            fi
+            exit 1
+          fi
+
+      - name: Ping Packagist update
+        if: steps.decide.outputs.skip != 'true' && env.PACKAGIST_TOKEN != ''
+        working-directory: ${{ github.workspace }}
+        env:
+          PACKAGIST_TOKEN: ${{ secrets.PACKAGIST_TOKEN }}
+          PACKAGIST_USERNAME: ${{ secrets.PACKAGIST_USERNAME }}
+        run: |
+          set -euo pipefail
+          curl -sS -X POST "https://packagist.org/api/update-package?username=${PACKAGIST_USERNAME}&apiToken=${PACKAGIST_TOKEN}" \
+            -H 'Content-Type: application/json' \
+            -d '{"repository":{"url":"https://github.com/b4moss/crudian"}}'

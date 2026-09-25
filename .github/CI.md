@@ -16,6 +16,7 @@
    [`.github/tests/`](./tests/) exercises the real decide/skip scripts with fixtures and fake `npm` / `gh` on `PATH`:
    - `should-publish-crudian.sh` (already-on-registry → skip; missing tag; new version publish/skip)
    - `should-publish-go.sh` (`VERSION` / `packages/go/v*` / existing Release)
+   - `should-publish-php.sh` (`composer.json` version / `packages/php/v*` / existing Release)
    - `ci-skip-if-ancestor-passed.sh` (green check + matching identity → hit)  
    Run locally: `make gate-tests` or `bash .github/tests/run.sh`.  
    These tests are the **source of truth** for CD/CI gate behaviour (including the v0.7.0 npm republish failure mode).
@@ -54,17 +55,18 @@ Expected for a tree whose `package.json` version is **already on npm**: decide s
 | `Docker image` | PR when `docker/**` / `.devcontainer/**` change | Image build + runtime check (not E2E) |
 | `Publish npm` | push → `release` | `@b4moss/crudian` when tag/`package.json` warrant |
 | `Publish Go` | push → `release` or tag `packages/go/v*` | Go module release + proxy ping |
+| `Publish Composer` | push → `release` or tag `packages/php/v*` | PHP Packagist package + GitHub Release |
 
 ## CI details (`ci.yml`)
 
-- **Change detection:** `dorny/paths-filter` on `packages/js/**` and `packages/go/**`. Edits under `.github/workflows`, `.github/scripts`, `.github/tests`, `.github/CI.md`, `.actrc`, or `Makefile` set `gates=true` and also schedule package jobs (so CI logic changes are not silently ignored).
+- **Change detection:** `dorny/paths-filter` on `packages/js/**`, `packages/go/**`, and `packages/php/**`. Edits under `.github/workflows`, `.github/scripts`, `.github/tests`, `.github/CI.md`, `.actrc`, or `Makefile` set `gates=true` and also schedule package jobs (so CI logic changes are not silently ignored).
 - **Gate scripts job:** `bash .github/tests/run.sh` when `gates=true`.
 - **Docs-only / other-only PRs:** package and gate jobs are skipped; gate job `CI result` still succeeds.
-- **Lint:** JS = `tsc --noEmit`; Go = `gofmt -l` + `go vet`.
-- **Tests:** JS bun-sqlite (+ build + coverage upload), JS drizzle/prisma/libsql (+ `c8` coverage upload), Go `go test -coverpkg=./... ./...` (+ coverage upload).
+- **Lint:** JS = `tsc --noEmit`; Go = `gofmt -l` + `go vet`; PHP = `phpstan`.
+- **Tests:** JS bun-sqlite (+ build + coverage upload), JS drizzle/prisma/libsql (+ `c8` coverage upload), Go `go test -coverpkg=./... ./...` (+ coverage upload), PHP `composer test` (PHPUnit; PDO SQLite required).
 - **Codecov:** project target **75%**（[`codecov.yml`](../codecov.yml)、#96）。status は informational（CI は落とさない）。Go は `-coverpkg=./...` でアダプタ経由のコアを計上。JS は bun-sqlite と node-adapters の双方を upload。
 - **Ancestor skip (not GHA cache):** each package job runs `.github/scripts/ci-skip-if-ancestor-passed.sh` with:
-  - exact check-run name (e.g. `test packages/go (gorm / libsql)`)
+  - exact check-run name (e.g. `test packages/go (gorm / libsql)`, `test packages/php (pdo / libsql)`)
   - identity paths: package dir + `ci.yml` + the skip script  
   If a recent ancestor / `origin/develop` / `origin/main` tip has the **same git OIDs** for those paths **and** a **successful** check-run with that name, the job short-circuits.  
   Why not `actions/cache` pass-markers? Cache entries are **branch-scoped**; feature → `dev-v*` → `develop` → `main` could not see each other’s markers, so stacks re-tested every time (confirmed in Actions logs: `Skip notice` never ran).
@@ -90,6 +92,14 @@ Required status check for branch protection should be **`CI result`** (not indiv
 - On publish: `go vet` + `go test`, create GitHub Release, best-effort `proxy.golang.org` ping.
 - **No npm-style registry upload.** Canonical identity is the module path + git tag; `go get` resolves them (proxy is a cache).
 - Independent of npm: publishing Go `0.7.0` does not require bumping `@b4moss/crudian` past `0.6.0`. Root tag `v0.7.0` alone does not publish Go.
+
+### PHP (`publish-composer.yml`)
+
+- Version: `packages/php/composer.json` `version` (first public line: **0.12.0**)
+- Tag: **`packages/php/vX.Y.Z`**
+- Script: `.github/scripts/should-publish-php.sh` — skip if no tag, tag not ancestor, or GitHub Release already exists.
+- On publish: `composer phpstan` + `composer test`, create GitHub Release, optional Packagist update ping when `PACKAGIST_TOKEN` / `PACKAGIST_USERNAME` secrets are set.
+- Packagist package name: **`b4moss/crudian`**. Root npm tag `v*` alone does not publish PHP.
 
 ## Explicit non-goals
 
