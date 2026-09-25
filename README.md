@@ -61,7 +61,7 @@ Usage, drivers, and API notes: [`packages/go/README.md`](./packages/go/README.md
 | Doc | Contents |
 |-----|----------|
 | [`docs/main.md`](./docs/main.md) | Spec (source of truth), including per-language versioning |
-| [`docs/plans/roadmap.md`](./docs/plans/roadmap.md) | Milestones |
+| [`docs/roadmap.md`](./docs/roadmap.md) | Milestones |
 | [`docs/plans/go-module.md`](./docs/plans/go-module.md) | Go design |
 | [`docs/plans/libsql-adapter.md`](./docs/plans/libsql-adapter.md) | JS libSQL design |
 | [`docs/tests/`](./docs/tests/) | Acceptance tests |
