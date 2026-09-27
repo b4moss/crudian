@@ -2,10 +2,10 @@
 
 対象マイルストーン: v0.7.0（Go モジュール化）  
 関連 Issue: [#48](https://github.com/b4moss/crudian/issues/48)  
-仕様: [`../main.md`](../main.md)  
-設計: [`../plans/go-module.md`](../plans/go-module.md)  
-ロードマップ: [`../plans/roadmap.md`](../plans/roadmap.md)  
-前提（契約の正・JS）: [`./v0.1.0.md`](./v0.1.0.md) / [`./v0.2.0.md`](./v0.2.0.md) / [`./v0.5.0.md`](./v0.5.0.md) / [`./v0.6.0.md`](./v0.6.0.md)  
+仕様: [`../../README.md`](../../README.md)  
+設計: [`../../specs/go/`](../../specs/go/)  
+ロードマップ: [`../../roadmap.md`](../../roadmap.md)  
+前提（契約の正・JS）: [`../bun-sqlite/core-crud.md`](../bun-sqlite/core-crud.md) / [`../bun-sqlite/extended-writes.md`](../bun-sqlite/extended-writes.md) / [`../contract/count-total.md`](../contract/count-total.md) / [`../libsql/adapter.md`](../libsql/adapter.md)  
 書き方: charter `tdd.md`（氷山パターン）
 
 本ファイルは **#48（Go: `gorm` / `libsql`）** の受け入れを扱う。  
@@ -29,7 +29,7 @@ API は **同期 + `context.Context`**。JS の sync/async 分裂は持たない
 | cursor | 当面 `id` 昇順。`NextCursor` は生の `id` |
 | `columns` | `Read` / `Search` / `List` で投影可。省略は全列 |
 | 識別子 / エラー | 文字列必須・形式検証なし。独自エラー最小。他は下位例外 |
-| 対象外 | GORM の PG/MySQL（**v0.7.0 未実装 → [`./v0.10.0.md`](./v0.10.0.md) / #73**）、可変 PK（#72）、リモート Turso Cloud E2E、PHP、offset、全文検索 |
+| 対象外 | GORM の PG/MySQL（**v0.7.0 未実装 → [`../dialect/mysql-postgres.md`](../dialect/mysql-postgres.md) / #73**）、可変 PK（#72）、リモート Turso Cloud E2E、PHP、offset、全文検索 |
 
 フィクスチャ表（例）は整数主キー `id` を持つ単表。スキーマはテスト内 DDL で用意してよい。  
 **同等性の判定:** 同じ操作列に対し、JS 仕様（v0.1 / v0.2 / v0.5）と同じ観測結果になること。
@@ -56,7 +56,7 @@ API は **同期 + `context.Context`**。JS の sync/async 分裂は持たない
 ### crudian.dialect
 
 - `SqliteDialect` が QuoteIdent / プレースホルダを提供する
-- Postgres / MySQL は **v0.10.0（#73）**。受け入れは [`./v0.10.0.md`](./v0.10.0.md)。v0.7.0 では stub でよい（テスト必須ではない）
+- Postgres / MySQL は **v0.10.0（#73）**。受け入れは [`../dialect/mysql-postgres.md`](../dialect/mysql-postgres.md)。v0.7.0 では stub でよい（テスト必須ではない）
 
 #### テスト：正常系
 
@@ -207,7 +207,7 @@ Dialect: Sqlite（libSQL 互換）
 #### テスト：正常系
 
 - `packages/go` に変更がある PR で `go test ./...` および Go lint（`gofmt` / `vet`）が CI（Go 1.26）で通る
-- `packages/go` に変更がない PR では Go ジョブはスキップされ、JS 等の既存ジョブを壊さない（[`.github/CI.md`](../../.github/CI.md)）
+- `packages/go` に変更がない PR では Go ジョブはスキップされ、JS 等の既存ジョブを壊さない（[`../../.github/CI.md`](../../../.github/CI.md)）
 
 #### テスト: 異常系
 

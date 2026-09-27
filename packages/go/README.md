@@ -131,7 +131,7 @@ db, err := gormio.Open(postgres.Open(dsn), &gormio.Config{})
 crud, err := gorm.CreateCrud(db, crudian.Options{Driver: "postgres"})
 ```
 
-Tests: `go test ./gorm/ -run TestPostgresDialectContract` / `TestMySQLDialectContract` (local or docker DB; see [`docs/tests/v0.10.0.md`](../../docs/tests/v0.10.0.md)).
+Tests: `go test ./gorm/ -run TestPostgresDialectContract` / `TestMySQLDialectContract` (local or docker DB; see [`docs/tests/dialect/mysql-postgres.md`](../../docs/tests/dialect/mysql-postgres.md)).
 
 ## libSQL
 
@@ -176,7 +176,7 @@ All methods take `ctx context.Context` first. Table names are plain strings.
 
 `Where` builders: `Eq` / `Ne` / `Lt` / `Gt` / `Lte` / `Gte` / `In` / `Like` / `IsNull` / `IsNotNull`, plus nestable `And` / `Or`.
 
-Spec: [`docs/main.md`](../../docs/main.md), tests: [`docs/tests/v0.10.0.md`](../../docs/tests/v0.10.0.md).
+Spec: [`docs/README.md`](../../docs/README.md), tests: [`docs/tests/dialect/mysql-postgres.md`](../../docs/tests/dialect/mysql-postgres.md).
 
 ## Versioning and release
 

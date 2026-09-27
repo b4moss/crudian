@@ -2,15 +2,15 @@
 
 対象マイルストーン: v0.9.0（`exists` / `Exists`、DB 接続プール／lifetime）  
 関連 Issue: [#106](https://github.com/b4moss/crudian/issues/106) / [#105](https://github.com/b4moss/crudian/issues/105)  
-仕様: [`../main.md`](../main.md)  
-ロードマップ: [`../plans/roadmap.md`](../plans/roadmap.md)  
-前提: [`./v0.5.0.md`](./v0.5.0.md)（`count`）/ [`./v0.6.0.md`](./v0.6.0.md) / [`./v0.7.0.md`](./v0.7.0.md) / [`./v0.8.0.md`](./v0.8.0.md)  
+仕様: [`../../README.md`](../../README.md)  
+ロードマップ: [`../../roadmap.md`](../../roadmap.md)  
+前提: [`./count-total.md`](./count-total.md)（`count`）/ [`../libsql/adapter.md`](../libsql/adapter.md) / [`../go/module.md`](../go/module.md) / [`./offset-pagination.md`](./offset-pagination.md)  
 書き方: charter `tdd.md`（氷山パターン）
 
 本ファイルは次の受け入れを扱う。
 
 1. **#106** — `exists` / `Exists`（boolean 糖衣）
-2. **#105** — DB 接続プール／接続維持時間（Go/GORM 先行。JS は [#73](https://github.com/b4moss/crudian/issues/73) / [`./v0.10.0.md`](./v0.10.0.md)）
+2. **#105** — DB 接続プール／接続維持時間（Go/GORM 先行。JS は [#73](https://github.com/b4moss/crudian/issues/73) / [`../dialect/mysql-postgres.md`](../dialect/mysql-postgres.md)）
 
 ---
 
@@ -140,7 +140,7 @@ DB: 呼び出し側注入の `bun:sqlite` `Database`（テストでは `:memory:
 
 パッケージ: `@b4moss/crudian/libsql`  
 ランタイム / テスト: Node.js 24+ + `node:test`（現行スクリプトに従う）  
-入口・DB 方針は [`./v0.6.0.md`](./v0.6.0.md) どおり。
+入口・DB 方針は [`../libsql/adapter.md`](../libsql/adapter.md) どおり。
 
 ### libsql.exists
 
@@ -184,7 +184,7 @@ DB: 呼び出し側注入の `bun:sqlite` `Database`（テストでは `:memory:
 ## Go libsql
 
 パッケージ: `github.com/b4moss/crudian/go/libsql`  
-入口・Dialect は [`./v0.7.0.md`](./v0.7.0.md) どおり。
+入口・Dialect は [`../go/module.md`](../go/module.md) どおり。
 
 ### libsql.exists
 
@@ -230,7 +230,7 @@ DB: 呼び出し側注入の `bun:sqlite` `Database`（テストでは `:memory:
 |------|-----|
 | 対象（必須） | Go `github.com/b4moss/crudian/go/gorm`（共有 `go/crudian`） |
 | 対象（no-op 観測） | Go `.../go/libsql` |
-| 対象外（本節） | JS 全アダプタ（→ [#73](https://github.com/b4moss/crudian/issues/73) / [`./v0.10.0.md`](./v0.10.0.md)）、PHP、接続 URL オープン、env からの秘密情報、Dialect インタフェース |
+| 対象外（本節） | JS 全アダプタ（→ [#73](https://github.com/b4moss/crudian/issues/73) / [`../dialect/mysql-postgres.md`](../dialect/mysql-postgres.md)）、PHP、接続 URL オープン、env からの秘密情報、Dialect インタフェース |
 | 所有 | 接続の生成・所有は呼び出し側。`CreateCrud` は接続を開かない（既存方針） |
 | 型 | `crudian.PoolOptions`（仮称確定名: `PoolOptions`） |
 | 入口 | （1）`crudian.ApplyPool(*sql.DB, *PoolOptions)` ヘルパ（2）`crudian.Options{Pool: ...}` を `CreateCrud` に渡す |
@@ -341,8 +341,8 @@ DB: 呼び出し側注入の `bun:sqlite` `Database`（テストでは `:memory:
 
 - Go README に「呼び出し側が接続を開き、必要なら Pool を設定」と書く
 - GORM は適用、libSQL は no-op と明記する
-- JS 側の同機能は #73 / [`./v0.10.0.md`](./v0.10.0.md) で扱うと明記する
-- `docs/main.md` / roadmap / go-module 設計メモに v0.9.0 / #105 が追記される
+- JS 側の同機能は #73 / [`../dialect/mysql-postgres.md`](../dialect/mysql-postgres.md) で扱うと明記する
+- `docs/README.md` / roadmap / go-module 設計メモに v0.9.0 / #105 が追記される
 
 #### テスト: 異常系
 

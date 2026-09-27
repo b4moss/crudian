@@ -2,10 +2,10 @@
 
 対象マイルストーン: v0.11.0（TypeORM adapter / coverage）  
 関連 Issue: [#43](https://github.com/b4moss/crudian/issues/43) / [#96](https://github.com/b4moss/crudian/issues/96)  
-仕様: [`../main.md`](../main.md)  
-ロードマップ: [`../plans/roadmap.md`](../plans/roadmap.md)  
-設計: [`../plans/typeorm-adapter.md`](../plans/typeorm-adapter.md)  
-前提: [`./v0.10.0.md`](./v0.10.0.md)（Dialect / MySQL・Postgres。**#43 着手ゲート**）  
+仕様: [`../../README.md`](../../README.md)  
+ロードマップ: [`../../roadmap.md`](../../roadmap.md)  
+設計: [`../../specs/typeorm/`](../../specs/typeorm/)  
+前提: [`../dialect/mysql-postgres.md`](../dialect/mysql-postgres.md)（Dialect / MySQL・Postgres。**#43 着手ゲート**）  
 書き方: charter `tdd.md`（氷山パターン）
 
 本ファイルは次の受け入れを扱う。
@@ -36,12 +36,12 @@
 | 契約の正 | v0.1〜v0.10 と同等の async 観測（CRUD / where / search・list / count / exists / upsert・duplicate・bulk* / transaction / 可変 PK） |
 | ランタイム | **Node.js 24+** と **Bun** の両方で必須 |
 | DB（初版必須） | **SQLite + Postgres + MySQL** |
-| プール | DataSource オプション側。Dialect に載せない（[`./v0.10.0.md`](./v0.10.0.md) Part D と同趣旨） |
+| プール | DataSource オプション側。Dialect に載せない（[`../dialect/mysql-postgres.md`](../dialect/mysql-postgres.md) Part D と同趣旨） |
 | upsert | アプリ層のまま（read → update / create） |
 | 対象外 | Entity 第一級 API、関係グラフ横断 CRUD、Cloud 専用 E2E、PHP、Dialect の TypeORM 内再実装 |
 
 フィクスチャ表（例）は整数主キーを持つ単表。スキーマはテスト内 DDL で用意する。  
-Postgres / MySQL は [`docker/compose.yaml`](../../docker/compose.yaml)（例: `DATABASE_URL_POSTGRES` / `DATABASE_URL_MYSQL`）。未設定時はサーバ方言スイートを **skip** してよい（Prisma と同趣旨）。  
+Postgres / MySQL は [`docker/compose.yaml`](../../../docker/compose.yaml)（例: `DATABASE_URL_POSTGRES` / `DATABASE_URL_MYSQL`）。未設定時はサーバ方言スイートを **skip** してよい（Prisma と同趣旨）。  
 MariaDB は必須対象としない（`mariadb` type は mysql dialect へマップしてよい）。
 
 ### 使い分け（README にも一行）
@@ -119,7 +119,7 @@ DDL: 方言に合わせる（例: `SERIAL`）
 
 #### テスト：正常系
 
-- [`./v0.10.0.md`](./v0.10.0.md) Part B（prisma.postgres）と同趣旨のメソッド一式
+- [`../dialect/mysql-postgres.md`](../dialect/mysql-postgres.md) Part B（prisma.postgres）と同趣旨のメソッド一式
 - `$n` プレースホルダが Update（SET+WHERE）や Search（WHERE+LIMIT）で壊れない
 - SQLite 経路の回帰が緑
 
@@ -162,7 +162,7 @@ insert 後: **RETURNING に依存しない**（共有 MySQLDialect の fetch-aft
 | Node | 24+ で `test:typeorm`（SQLite 常時）が緑 |
 | Bun | 同じく SQLite 常時が緑 |
 | サーバ DB | env があるジョブ／ローカルでは `test:typeorm:postgres` / `:mysql` が緑。無いときは skip |
-| CI | [`../../.github/workflows/ci.yml`](../../.github/workflows/ci.yml) に Node + Bun の typeorm 実行を載せる |
+| CI | [`../../.github/workflows/ci.yml`](../../../.github/workflows/ci.yml) に Node + Bun の typeorm 実行を載せる |
 
 #### テスト：正常系
 
@@ -222,7 +222,7 @@ insert 後: **RETURNING に依存しない**（共有 MySQLDialect の fetch-aft
 - Go CI ジョブの cover コマンドに `-coverpkg=./...`（または同等）がある
 - JS の node-adapters（および typeorm）からも coverage ファイルが Codecov に送られる
 - 当該ブランチ／PR の Codecov が **75%以上** を示す
-- [`.github/CI.md`](../../.github/CI.md) に 75% 目標と計測方針が書かれている
+- [`../../.github/CI.md`](../../../.github/CI.md) に 75% 目標と計測方針が書かれている
 
 #### テスト: 異常系
 
@@ -252,12 +252,12 @@ insert 後: **RETURNING に依存しない**（共有 MySQLDialect の fetch-aft
 
 #### テスト：正常系（レビュー観点）
 
-- 本ファイル（`docs/tests/v0.11.0.md`）が [`./README.md`](./README.md) と [`../plans/roadmap.md`](../plans/roadmap.md) からリンクされる
-- [`../plans/typeorm-adapter.md`](../plans/typeorm-adapter.md) の受け入れが本ファイルを指す
+- 本ファイル（`docs/tests/typeorm/adapter.md`）が [`../README.md`](../README.md) と [`../../roadmap.md`](../../roadmap.md) からリンクされる
+- [`../../specs/typeorm/`](../../specs/typeorm/) の受け入れが本ファイルを指す
 - JS / ルート README に `@b4moss/crudian/typeorm` の導入例・peer・Dialect 行がある
 - v0.10.0 時点の「Out of scope: TypeORM」記述が削除または更新されている
 - #96 の 75% が roadmap / CI.md に明記されている
-- #73 MySQL 完了ゲートと矛盾しない（前提として [`./v0.10.0.md`](./v0.10.0.md) を参照）
+- #73 MySQL 完了ゲートと矛盾しない（前提として [`../dialect/mysql-postgres.md`](../dialect/mysql-postgres.md) を参照）
 
 #### テスト: 異常系
 

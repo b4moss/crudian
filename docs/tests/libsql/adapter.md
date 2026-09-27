@@ -2,10 +2,10 @@
 
 対象マイルストーン: v0.6.0（libSQL adapter）  
 関連 Issue: [#42](https://github.com/b4moss/crudian/issues/42)  
-仕様: [`../main.md`](../main.md)  
-設計: [`../plans/libsql-adapter.md`](../plans/libsql-adapter.md)  
-ロードマップ: [`../plans/roadmap.md`](../plans/roadmap.md)  
-前提: [`./v0.1.0.md`](./v0.1.0.md) / [`./v0.2.0.md`](./v0.2.0.md) / [`./v0.3.0.md`](./v0.3.0.md) / [`./v0.5.0.md`](./v0.5.0.md)  
+仕様: [`../../README.md`](../../README.md)  
+設計: [`../../specs/libsql/`](../../specs/libsql/)  
+ロードマップ: [`../../roadmap.md`](../../roadmap.md)  
+前提: [`../bun-sqlite/core-crud.md`](../bun-sqlite/core-crud.md) / [`../bun-sqlite/extended-writes.md`](../bun-sqlite/extended-writes.md) / [`../drizzle/adapter.md`](../drizzle/adapter.md) / [`../contract/count-total.md`](../contract/count-total.md)  
 書き方: charter `tdd.md`（氷山パターン）
 
 本ファイルは **#42（`@b4moss/crudian/libsql`）** の受け入れを扱う。  

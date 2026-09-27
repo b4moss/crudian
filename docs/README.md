@@ -39,7 +39,7 @@ DDD の Repository 層向け CRUD 抽象ライブラリ。
 - `search` / `list` の `total` と `count()` は where 全件数（limit / offset / cursor 非依存）。`count` は `search` と同じ where コンパイルを流用する
 - 存在の有無だけが必要なら `exists`、件数が必要なら `count`（`exists` は `count > 0` の糖衣。実装は `SELECT 1 … LIMIT 1`）
 - Go の接続プール／lifetime は `Options.Pool` / `ApplyPool`（GORM で適用、libSQL は no-op）
-- JS のプールは呼び出し側（Prisma datasource 等）。型 `PoolOptions` は文書化用。SQLite アダプタは no-op（#73 / [`docs/tests/v0.10.0.md`](./tests/v0.10.0.md)）
+- JS のプールは呼び出し側（Prisma datasource 等）。型 `PoolOptions` は文書化用。SQLite アダプタは no-op（#73 / [`tests/dialect/mysql-postgres.md`](./tests/dialect/mysql-postgres.md)）
 - **Dialect:** SQLite / Postgres / MySQL。JS は Prisma の `options.dialect`、Go は GORM の `Options.Driver` / `Dialect`。Drizzle は SQLite のみ。MySQL は `RETURNING` 非使用（insert 後 SELECT）
 - 全文検索には対応しない
 - 行データはジェネリクスで型付けする
@@ -90,7 +90,7 @@ DDD の Repository 層向け CRUD 抽象ライブラリ。
 | 3 | `bulk*` 戻り値 | すべて件数のみ |
 | 4 | ファクトリ名 | `createCrud(db)` |
 
-設計・進め方の詳細: [`docs/plans/bun-sqlite-adapter.md`](./plans/bun-sqlite-adapter.md)。libSQL アダプタは [`docs/plans/libsql-adapter.md`](./plans/libsql-adapter.md)。
+契約・アダプタ仕様: [`specs/contract/`](./specs/contract/) / [`specs/bun-sqlite/`](./specs/bun-sqlite/) / [`specs/libsql/`](./specs/libsql/)。
 
 ## パッケージ構成
 
@@ -109,6 +109,7 @@ Node から `@b4moss/crudian/bun-sqlite` を読んだ場合は、読み込み時
 | `@b4moss/crudian/drizzle` | Drizzle |
 | `@b4moss/crudian/prisma` | Prisma |
 | `@b4moss/crudian/libsql` | libSQL（`@libsql/client`。Turso Cloud 等のホスト先を含む） |
+| `@b4moss/crudian/typeorm` | TypeORM `DataSource`（async。SQLite / Postgres / MySQL） |
 
 ```ts
 import { createCrud } from "@b4moss/crudian/bun-sqlite"
@@ -116,34 +117,19 @@ import { createCrud } from "@b4moss/crudian/bun-sqlite"
 const crud = createCrud(db)
 ```
 
-### PHP（単一 Composer パッケージ）
+アダプタ詳細: [`specs/bun-sqlite/`](./specs/bun-sqlite/) / [`drizzle`](./specs/drizzle/) / [`prisma`](./specs/prisma/) / [`libsql`](./specs/libsql/) / [`typeorm`](./specs/typeorm/)
 
-パッケージ名: **`b4moss/crudian`**（`packages/php`）
+### PHP（未実装）
 
-Composer / Packagist 向け。**言語あたり 1 配布物**（JS / Go と同じ）。アダプタ別の Packagist パッケージ（`pdo-mysql` 等）は切らない。
-
-- 入口は呼び出し側が作った接続の注入（内部で接続を開かない）
-- MySQL / Postgres / SQLite は **PDO**（ORM 不使用）。方言差は Dialect で吸収する
-- libSQL は公式 SDK（`turso/libsql` 等。PDO ではない）を **テクニカルプレビューとして採用**する
-- PDO / libSQL とも、注入クライアントを **薄い Executor** に橋渡しし、共有 CRUD は Executor + Dialect のみに依存する（Go `libsql` と同型）
-- 同一 `composer.json` に共有契約（Where / Dialect / CRUD / Executor）とアダプタを同梱する
-
-Laravel 実装は **無期限延期**。設計・実装仕様の対象外とし、レイアウトや API に考慮しない。
-
-| 層 | 役割 |
-|----|------|
-| 共有 | 契約・Where・Dialect・CRUD |
-| Executor | Dialect 非依存の SQL 実行（Run / Get / All / Transaction）。具象はアダプタ側 |
-| PDO アダプタ | `PDO` → 薄い Executor。Dialect で SQLite / Postgres / MySQL |
-| libSQL アダプタ | 公式 SDK 接続 → 薄い Executor（technical preview。SDK / FFI 前提の制約はアダプタ境界に閉じる） |
-
-配置の正は **`packages/php/`**（単一 `composer.json`）。旧メモの DB 別ディレクトリ分割は採用しない。
+Packagist **`b4moss/crudian`** 単一パッケージを予定。方針・層分割の正本は [`plans/unscheduled/php-package.md`](./plans/unscheduled/php-package.md)（#127）。
 
 ### Go
 
 | パス | 対象 |
 |------|------|
 | `packages/go` | Go module `github.com/b4moss/crudian/go`（`crudian` / `gorm` / `libsql`） |
+
+詳細: [`specs/go/`](./specs/go/)
 
 ## ランタイム / テスト
 
@@ -157,12 +143,13 @@ Laravel 実装は **無期限延期**。設計・実装仕様の対象外とし�
 | `drizzle` | Node.js 24+ | `node:test`（`node --test`） |
 | `prisma` | Node.js 24+ | `node:test`（SQLite 常時。Postgres / MySQL は `test:prisma:postgres` / `test:prisma:mysql`） |
 | `libsql`（JS） | Node.js 24+ / Bun | `node:test`（`node --test`） |
+| `typeorm` | Node.js 24+ / Bun | `node:test` / `bun:test`（SQLite + Postgres / MySQL） |
 | `go/gorm` | Go 1.26+ | `go test`（SQLite + Postgres / MySQL 契約。後者は実 DB） |
 | `go/libsql` | Go 1.26+ | `go test`（公式 libSQL `database/sql`、SQLite 互換） |
 
 ## マイルストーン
 
-機能単位で実装とインメモリテストを同時に閉じる。詳細は [`docs/plans/roadmap.md`](./plans/roadmap.md)。
+機能単位で実装とインメモリテストを同時に閉じる。詳細は [`docs/roadmap.md`](./roadmap.md)。
 
 | バージョン | 内容 |
 |------------|------|
@@ -171,11 +158,11 @@ Laravel 実装は **無期限延期**。設計・実装仕様の対象外とし�
 | **v0.3.0** | Drizzle / Prisma で同等の実装とテストが通ること |
 | **v0.5.0** | `count()` と `SearchResult.total`（#47） |
 | **v0.6.0** | libSQL アダプタ（`@b4moss/crudian/libsql` / `@libsql/client`。#42） |
-| **v0.7.0** | Go モジュール（`go/gorm` + `go/libsql`。**現状 SQLite のみ**。MySQL / Postgres は後続。#48） |
+| **v0.7.0** | Go モジュール（`go/gorm` + `go/libsql`。初版は SQLite。#48） |
 | **v0.8.0** | `search` / `list` の offset pagination と `paging` 切替（デフォルト `"offset"`。#90）。JS 全アダプタ + Go |
 | **v0.9.0** | `exists` / `Exists`（boolean 糖衣。#106）。Go 接続プール／lifetime（GORM 適用・libSQL no-op。#105。JS は #73 / v0.10.0） |
-| **v0.10.0** | Dialect / MySQL・Postgres（#73）。JS Prisma + Go GORM。JS プール文書化（#105 連動）。受け入れ: [`docs/tests/v0.10.0.md`](./tests/v0.10.0.md) |
-| **v0.11.0** | TypeORM アダプタ（#43）+ codecov 75%（#96）。受け入れ: [`docs/tests/v0.11.0.md`](./tests/v0.11.0.md) |
+| **v0.10.0** | Dialect / MySQL・Postgres（#73）。JS Prisma + Go GORM。JS プール文書化（#105 連動）。受け入れ: [`tests/dialect/mysql-postgres.md`](./tests/dialect/mysql-postgres.md) |
+| **v0.11.0** | TypeORM アダプタ（#43）+ codecov 75%（#96）。受け入れ: [`tests/typeorm/adapter.md`](./tests/typeorm/adapter.md) |
 
 ## バージョン方針
 
@@ -197,12 +184,12 @@ Laravel 実装は **無期限延期**。設計・実装仕様の対象外とし�
 
 思想の正典は charter の薄い DDD と iron-rule の `internal/db/crud`（および nook の `CrudTrait`）。本ライブラリはその共通 CRUD を言語横断でパッケージ化する。
 
-## 初期スコープ
+## 索引
 
-まず `@b4moss/crudian/bun-sqlite` の Core（v0.1.0）→ Extended writes（v0.2.0）のあと、他アダプタへ展開する（v0.3.0）。
+- 契約・アダプタ仕様: [`specs/`](./specs/)
+- これからやる内容: [`plans/`](./plans/)（PHP は [`plans/unscheduled/php-package.md`](./plans/unscheduled/php-package.md)）
+- ロードマップ: [`roadmap.md`](./roadmap.md)
+- テスト仕様: [`tests/`](./tests/README.md)
+- OKF 索引: [`index.md`](./index.md)
 
-- 設計と進め方: [`docs/plans/bun-sqlite-adapter.md`](./plans/bun-sqlite-adapter.md) / [`docs/plans/libsql-adapter.md`](./plans/libsql-adapter.md) / [`docs/plans/go-module.md`](./plans/go-module.md)
-- ロードマップ: [`docs/plans/roadmap.md`](./plans/roadmap.md)
-- テスト仕様: [`docs/tests/`](./tests/README.md)
-
-このドキュメントを仕様の正とする。
+本ファイルはプロダクトの **pillar**（目的・スコープ・技術方針のハブ）。現行振る舞いの詳細正本は `specs/`。
