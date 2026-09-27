@@ -25,6 +25,7 @@
 | **v0.4.0** | Docker / E2E harness | 全ランタイム 1 コンテナ + Postgres / MySQL / MariaDB 上の E2E 基盤（[#44](https://github.com/b4moss/crudian/issues/44)） |
 | **v0.10.0** | Dialect / MySQL・Postgres | SQL 方言の切り出しと MySQL / Postgres 対応。JS プールもここに載せる（[#73](https://github.com/b4moss/crudian/issues/73)、#105 の JS 分） |
 | **v0.11.0** | TypeORM adapter / coverage | `@b4moss/crudian/typeorm`（[#43](https://github.com/b4moss/crudian/issues/43)）と codecov 75%（[#96](https://github.com/b4moss/crudian/issues/96)） |
+| **v0.12.0** | PHP package | Packagist `b4moss/crudian`（PDO + libSQL preview。#127）。受け入れ: [`docs/tests/v0.12.0.md`](tests/v0.12.0.md) |
 
 ---
 

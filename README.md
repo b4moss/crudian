@@ -3,6 +3,7 @@
 [![CI](https://github.com/b4moss/crudian/actions/workflows/ci.yml/badge.svg)](https://github.com/b4moss/crudian/actions/workflows/ci.yml)
 [![Coverage](https://codecov.io/gh/b4moss/crudian/graph/badge.svg)](https://codecov.io/gh/b4moss/crudian)
 [![npm](https://img.shields.io/npm/v/@b4moss/crudian)](https://www.npmjs.com/package/@b4moss/crudian)
+[![Packagist](https://img.shields.io/packagist/v/b4moss/crudian)](https://packagist.org/packages/b4moss/crudian)
 [![Go Reference](https://pkg.go.dev/badge/github.com/b4moss/crudian/go.svg)](https://pkg.go.dev/github.com/b4moss/crudian/go)
 [![Release](https://img.shields.io/github/v/release/b4moss/crudian)](https://github.com/b4moss/crudian/releases)
 [![License](https://img.shields.io/github/license/b4moss/crudian)](https://github.com/b4moss/crudian/blob/main/LICENSE)
@@ -55,6 +56,26 @@ go get github.com/b4moss/crudian/go@v0.7.0
 Usage, drivers, and API notes: [`packages/go/README.md`](./packages/go/README.md). Dialect acceptance: [`docs/tests/v0.10.0.md`](./docs/tests/v0.10.0.md).
 
 **Release:** tag `packages/go/vX.Y.Z` matching `VERSION`. Root tag `vX.Y.Z` alone does **not** publish Go. CD creates a GitHub Release and pings the module proxy; it does not upload to npm.
+
+## PHP
+
+Composer package: **[b4moss/crudian](./packages/php)** (`packages/php`)
+
+Requires PHP **8.3+**. PDO adapters for SQLite / Postgres / MySQL; libSQL via official SDK (**technical preview**, needs `ext-ffi`).
+
+```bash
+composer require b4moss/crudian
+```
+
+| Namespace | Role |
+|-----------|------|
+| `B4moss\Crudian\` | Shared contract, Where, Dialect, CRUD, Executor |
+| `B4moss\Crudian\Pdo\` | `createCrud(PDO)` |
+| `B4moss\Crudian\Libsql\` | `createCrud($connection)` (preview) |
+
+Usage: [`packages/php/README.md`](./packages/php/README.md). Acceptance: [`docs/tests/v0.12.0.md`](./docs/tests/v0.12.0.md).
+
+**Release:** tag `packages/php/vX.Y.Z` matching `packages/php/VERSION`. Monorepo CD gates tests and creates the Release marker; **[b4moss/crudian-php](https://github.com/b4moss/crudian-php)** mirrors `packages/php` and tags `vX.Y.Z` for Packagist (`b4moss/crudian`).
 
 ## Docs
 

@@ -1,0 +1,94 @@
+name: Publish Composer (PHP)
+
+# Gates Packagist package b4moss/crudian and creates the monorepo Release marker.
+# Dist sync (subtree mirror → tags → Packagist) is owned by b4moss/crudian-php
+# (.github/workflows/sync-from-monorepo.yml) using that repo's GITHUB_TOKEN — no PAT.
+#
+# Monorepo tag: packages/php/vX.Y.Z (must match packages/php/VERSION).
+# Dist repo tags: vX.Y.Z (Packagist SemVer).
+# See .github/CI.md
+
+on:
+  push:
+    branches:
+      - release
+    tags:
+      - "packages/php/v*"
+
+concurrency:
+  group: publish-php-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: gate + release marker (PHP)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Decide whether to publish
+        id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/should-publish-php.sh
+
+      - name: Setup PHP
+        if: steps.decide.outputs.skip != 'true'
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: pdo_sqlite, ffi
+          coverage: none
+          tools: composer
+
+      - name: Install
+        if: steps.decide.outputs.skip != 'true'
+        working-directory: packages/php
+        run: composer install --no-interaction --prefer-dist
+
+      - name: PHPStan
+        if: steps.decide.outputs.skip != 'true'
+        working-directory: packages/php
+        run: composer phpstan
+
+      - name: Test
+        if: steps.decide.outputs.skip != 'true'
+        working-directory: packages/php
+        run: composer test
+
+      - name: Create GitHub Release (monorepo marker)
+        if: steps.decide.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.decide.outputs.tag }}
+          VERSION: ${{ steps.decide.outputs.version }}
+          DIST_TAG: ${{ steps.decide.outputs.dist_tag }}
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release already exists: $TAG (skip create)"
+            exit 0
+          fi
+          notes="Composer package \`b4moss/crudian\` v${VERSION}.
+
+          Dist sync is owned by https://github.com/b4moss/crudian-php (Actions + GITHUB_TOKEN).
+          After this Release exists, that workflow mirrors \`packages/php\` and tags \`${DIST_TAG}\`.
+          Packagist: https://packagist.org/packages/b4moss/crudian"
+          if ! out="$(gh release create "$TAG" \
+            --title "PHP b4moss/crudian v${VERSION}" \
+            --notes "$notes" \
+            --verify-tag 2>&1)"; then
+            echo "$out"
+            if echo "$out" | grep -qi 'already exists'; then
+              echo "Release appeared concurrently; treating as success."
+              exit 0
+            fi
+            exit 1
+          fi

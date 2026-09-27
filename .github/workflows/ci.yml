@@ -35,6 +35,7 @@ jobs:
     outputs:
       js: ${{ steps.set.outputs.js }}
       go: ${{ steps.set.outputs.go }}
+      php: ${{ steps.set.outputs.php }}
       gates: ${{ steps.set.outputs.gates }}
     steps:
       - name: Checkout
@@ -49,6 +50,8 @@ jobs:
               - 'packages/js/**'
             go:
               - 'packages/go/**'
+            php:
+              - 'packages/php/**'
             workflow:
               - '.github/workflows/ci.yml'
               - '.github/scripts/**'
@@ -67,9 +70,11 @@ jobs:
           if [[ "${{ steps.filter.outputs.workflow }}" == "true" ]]; then
             echo "js=true" >> "$GITHUB_OUTPUT"
             echo "go=true" >> "$GITHUB_OUTPUT"
+            echo "php=true" >> "$GITHUB_OUTPUT"
           else
             echo "js=${{ steps.filter.outputs.js }}" >> "$GITHUB_OUTPUT"
             echo "go=${{ steps.filter.outputs.go }}" >> "$GITHUB_OUTPUT"
+            echo "php=${{ steps.filter.outputs.php }}" >> "$GITHUB_OUTPUT"
           fi
 
   gate-scripts:
@@ -359,6 +364,102 @@ jobs:
           fail_ci_if_error: false
           verbose: true
 
+  lint-php:
+    name: lint packages/php
+    needs: changes
+    if: needs.changes.outputs.php == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: packages/php
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Skip if ancestor already passed
+        id: skip
+        working-directory: ${{ github.workspace }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/ci-skip-if-ancestor-passed.sh "lint packages/php" packages/php .github/workflows/ci.yml .github/scripts/ci-skip-if-ancestor-passed.sh
+
+      - name: Setup PHP
+        if: steps.skip.outputs.hit != 'true'
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: pdo_sqlite, ffi
+          coverage: none
+          tools: composer
+
+      - name: Cache Composer
+        if: steps.skip.outputs.hit != 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ runner.os }}-${{ hashFiles('packages/php/composer.json') }}
+          restore-keys: |
+            composer-${{ runner.os }}-
+
+      - name: Install dependencies
+        if: steps.skip.outputs.hit != 'true'
+        run: composer install --no-interaction --prefer-dist
+
+      - name: PHPStan
+        if: steps.skip.outputs.hit != 'true'
+        run: composer phpstan
+
+  php-package:
+    name: test packages/php (pdo / libsql)
+    needs: changes
+    if: needs.changes.outputs.php == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: packages/php
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Skip if ancestor already passed
+        id: skip
+        working-directory: ${{ github.workspace }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/ci-skip-if-ancestor-passed.sh "test packages/php (pdo / libsql)" packages/php .github/workflows/ci.yml .github/scripts/ci-skip-if-ancestor-passed.sh
+
+      - name: Setup PHP
+        if: steps.skip.outputs.hit != 'true'
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: pdo_sqlite, ffi
+          coverage: none
+          tools: composer
+
+      - name: Cache Composer
+        if: steps.skip.outputs.hit != 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ runner.os }}-${{ hashFiles('packages/php/composer.json') }}
+          restore-keys: |
+            composer-${{ runner.os }}-
+
+      - name: Install dependencies
+        if: steps.skip.outputs.hit != 'true'
+        run: composer install --no-interaction --prefer-dist
+
+      - name: PHPUnit
+        if: steps.skip.outputs.hit != 'true'
+        run: composer test
+
   ci-result:
     name: CI result
     needs:
@@ -369,6 +470,8 @@ jobs:
       - node-adapters
       - lint-go
       - go-module
+      - lint-php
+      - php-package
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -376,7 +479,7 @@ jobs:
       - name: Aggregate
         run: |
           set -euo pipefail
-          echo "js=${{ needs.changes.outputs.js }} go=${{ needs.changes.outputs.go }} gates=${{ needs.changes.outputs.gates }}"
+          echo "js=${{ needs.changes.outputs.js }} go=${{ needs.changes.outputs.go }} php=${{ needs.changes.outputs.php }} gates=${{ needs.changes.outputs.gates }}"
           results=(
             "${{ needs.gate-scripts.result }}"
             "${{ needs.lint-js.result }}"
@@ -384,6 +487,8 @@ jobs:
             "${{ needs.node-adapters.result }}"
             "${{ needs.lint-go.result }}"
             "${{ needs.go-module.result }}"
+            "${{ needs.lint-php.result }}"
+            "${{ needs.php-package.result }}"
           )
           for r in "${results[@]}"; do
             case "$r" in
