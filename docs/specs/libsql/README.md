@@ -1,9 +1,9 @@
-# libSQL Adapter — 設計と進め方
+# libSQL アダプタ仕様
 
-`@b4moss/crudian/libsql` を、既存の async 共有層（prisma と同型）で追加する方針のメモ。  
-仕様の正は [`docs/main.md`](../main.md)。マイルストーン割当は [`roadmap.md`](./roadmap.md)。  
-受け入れテストは [`docs/tests/v0.6.0.md`](../tests/v0.6.0.md)。  
-関連 Issue: [#42](https://github.com/b4moss/crudian/issues/42)（マイルストーン v0.6.0）
+`@b4moss/crudian/libsql` の現行仕様正本（async 共有層・prisma と同型）。  
+契約の正は [`../contract/`](../contract/)。pillar は [`../../README.md`](../../README.md)。  
+受け入れテストは [`../../tests/libsql/adapter.md`](../../tests/libsql/adapter.md)。  
+関連 Issue: [#42](https://github.com/b4moss/crudian/issues/42)（実装済み）。
 
 ## 製品意図
 
@@ -45,7 +45,7 @@ await crud.create("items", { name: "alpha", score: 1 })
 await crud.search("items", { where: where().eq("name", "alpha") })
 ```
 
-- 入口は `createCrud(client)`。接続生成は呼び出し側
+- 入口は `createCrud(client, options?)`。接続生成は呼び出し側。`options.pk` 対応（SQLite 方言固定）
 - 生の client を `crud.db` で公開（JOIN 等の非 CRUD 用）
 - メソッドは prisma と同じ async 面（`create` / `read` / `update` / `delete` / `search` / `list` / `count` / `upsert` / `duplicate` / `bulk*` / `transaction`）
 - SQL 方言は既存 `sqlite/sql`（`?` プレースホルダ）。libSQL の名前付き引数は使わない
@@ -76,7 +76,7 @@ prisma アダプタと同様に、`createAsyncSqliteCrud(client, ex)` へ渡す�
 |------|-----|
 | ランタイム | Node.js 24+ + `node:test`（drizzle / prisma と同じ） |
 | DB | 一時ファイル（`file:...`）。クラウド資格情報不要。`:memory:` は推奨しない（TX で別接続になりやすい） |
-| 契約 | v0.1 / v0.2 / v0.5 相当を libsql で一式（[`v0.6.0.md`](../tests/v0.6.0.md)） |
+| 契約 | 共有契約一式を libsql で（[`adapter.md`](../../tests/libsql/adapter.md)） |
 | 非対象 | リモート Turso Cloud E2E、認証トークン前提 |
 
 ## 梱包
@@ -89,7 +89,7 @@ prisma アダプタと同様に、`createAsyncSqliteCrud(client, ex)` へ渡す�
 
 - サブパス `turso`
 - `@tursodatabase/serverless` 専用アダプタ（別 Issue）
-- ORM 風モデル、マイグレーション、全文検索、offset ページング
+- ORM 風モデル、マイグレーション、全文検索
 - ライブラリ内部での自動トランザクション（ヘルパのみ）
 
 ## 決定事項（v0.6.0）
@@ -103,3 +103,8 @@ prisma アダプタと同様に、`createAsyncSqliteCrud(client, ex)` へ渡す�
 | テスト DB | 一時ファイル（`file:...`）。`:memory:` は接続／interactive TX で別 DB になりやすい |
 | 6 | マイルストーン | v0.6.0（#42）。v0.5.0 の count とは別スコープ |
 | 7 | 版上げ | JS パッケージ `@b4moss/crudian` を `0.6.0` へ（Go 等の他言語版とは独立） |
+
+## 関連
+
+- テスト: [`../../tests/libsql/adapter.md`](../../tests/libsql/adapter.md)
+- 契約: [`../contract/`](../contract/)

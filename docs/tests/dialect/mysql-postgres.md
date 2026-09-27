@@ -2,9 +2,9 @@
 
 対象マイルストーン: v0.10.0（Dialect / MySQL・Postgres、JS プール）  
 関連 Issue: [#73](https://github.com/b4moss/crudian/issues/73) / [#105](https://github.com/b4moss/crudian/issues/105)（JS 分）  
-仕様: [`../main.md`](../main.md)  
-ロードマップ: [`../plans/roadmap.md`](../plans/roadmap.md)  
-前提: [`./v0.7.0.md`](./v0.7.0.md)（Go Dialect 骨格）/ [`./v0.8.0.md`](./v0.8.0.md) / [`./v0.9.0.md`](./v0.9.0.md)（Go プール先行）  
+仕様: [`../../README.md`](../../README.md)  
+ロードマップ: [`../../roadmap.md`](../../roadmap.md)  
+前提: [`../go/module.md`](../go/module.md)（Go Dialect 骨格）/ [`../contract/offset-pagination.md`](../contract/offset-pagination.md) / [`../contract/exists.md`](../contract/exists.md)（Go プール先行）  
 書き方: charter `tdd.md`（氷山パターン）
 
 本ファイルは次の受け入れを扱う。
@@ -86,7 +86,7 @@
 ## Go 共有 Dialect 拡充
 
 パッケージ: `github.com/b4moss/crudian/go/crudian`  
-前提: [`./v0.7.0.md`](./v0.7.0.md) の薄い Dialect（QuoteIdent / Placeholder）を **拡充**する
+前提: [`../go/module.md`](../go/module.md) の薄い Dialect（QuoteIdent / Placeholder）を **拡充**する
 
 ### go.dialect.sqlite
 
@@ -111,7 +111,7 @@
 ### go.adapters.sqliteDialectWiring
 
 - `go/gorm`（SQLite 経路）と `go/libsql` は引き続き `SqliteDialect`
-- `PoolOptions`（[`./v0.9.0.md`](./v0.9.0.md) Part B）を壊さない
+- `PoolOptions`（[`../contract/exists.md`](../contract/exists.md) Part B）を壊さない
 
 #### テスト：正常系
 
@@ -135,7 +135,7 @@
 | 列記述 | `information_schema`（または同等）で PK 列の存在を確認できること |
 | JS 必須 ORM | **Prisma**（`options.dialect: "postgres"`。既定は `"sqlite"` のまま） |
 | Go 必須 | GORM + Postgres ドライバ。dialect は **明示オプション優先**（誤検出回避） |
-| テスト DB | [`docker/compose.yaml`](../../docker/compose.yaml) の Postgres（例: `DATABASE_URL_POSTGRES`）。資格情報は compose 既定 |
+| テスト DB | [`docker/compose.yaml`](../../../docker/compose.yaml) の Postgres（例: `DATABASE_URL_POSTGRES`）。資格情報は compose 既定 |
 | フィクスチャ | 整数主キー単表。DDL は方言に合わせる（例: `SERIAL` / `GENERATED …`）。スキーマはテスト内で用意 |
 | 契約 | v0.1〜v0.9 と同等の観測（CRUD / where / search・list / count / exists / upsert・duplicate・bulk* / transaction / 可変 PK） |
 | 本 Part の対象外 | Drizzle Postgres subpath、PHP、TypeORM |
@@ -183,7 +183,7 @@
 ### gorm.postgres
 
 - PostgresDialect を選択して Raw/Exec 経路で同等 CRUD が通る
-- `Options.Pool` 指定時は既存どおり底层 `*sql.DB` に適用される（[`./v0.9.0.md`](./v0.9.0.md)）
+- `Options.Pool` 指定時は既存どおり底层 `*sql.DB` に適用される（[`../contract/exists.md`](../contract/exists.md)）
 
 #### テスト：正常系
 
@@ -269,7 +269,7 @@ MariaDB は本版の必須対象としない（docker に存在するが、受�
 | 所有 | 接続の生成・所有は呼び出し側（既存方針） |
 | Dialect | プール設定を Dialect に載せない |
 | SQLite / libSQL / bun-sqlite / drizzle(sqlite) | プール設定の適用は **不要（no-op 可）**。渡してもエラーにしない／無視してよい |
-| Go | [`./v0.9.0.md`](./v0.9.0.md) Part B 済み。本 Part でやり直さない |
+| Go | [`../contract/exists.md`](../contract/exists.md) Part B 済み。本 Part でやり直さない |
 | 手段 | （A）Prisma datasource / クライアント生成側のプール設定手順を **ドキュメント化**する、および／または（B）将来ドライバ向けの薄い型／ヘルパ。Prisma では **呼び出し側設定が本体** |
 | CRUD 契約 | `create` / `search` 等にプール引数を常設しない |
 
@@ -289,7 +289,7 @@ MariaDB は本版の必須対象としない（docker に存在するが、受�
 
 #### テスト：正常系（レビュー観点 + 実装観測）
 
-- JS README / `docs/main.md` に「呼び出し側が接続を開き、必要ならプールを設定」と、Prisma(PG/MySQL) の手順またはリンクがある
+- JS README / `docs/README.md` に「呼び出し側が接続を開き、必要ならプールを設定」と、Prisma(PG/MySQL) の手順またはリンクがある
 - SQLite / libSQL / bun-sqlite ではプール未適用でも安全（既存テスト緑。追加オプションがあっても no-op）
 - Dialect インタフェースにプールフィールドが無い
 
@@ -305,11 +305,11 @@ MariaDB は本版の必須対象としない（docker に存在するが、受�
 
 #### テスト：正常系（レビュー観点）
 
-- 対応 DB（SQLite / Postgres / MySQL）と制限（例: MySQL は RETURNING 非使用、本版の JS サーバ DB は Prisma、Drizzle は SQLite のみ）が README / `docs/main.md` に書かれている
+- 対応 DB（SQLite / Postgres / MySQL）と制限（例: MySQL は RETURNING 非使用、本版の JS サーバ DB は Prisma、Drizzle は SQLite のみ）が README / `docs/README.md` に書かれている
 - Go README に GORM の PG/MySQL 対応と dialect 明示の仕方が書かれている
 - JS プールは本マイルストーン（#73）で扱うこと、Go プールは v0.9.0 / #105 済みであることが追記または相互参照される
-- 本ファイル（`docs/tests/v0.10.0.md`）が [`./README.md`](./README.md) と roadmap からリンクされる
-- TypeORM 計画（#43）の「#73 MySQL 完了ゲート」と矛盾しない（後続受け入れ: [`./v0.11.0.md`](./v0.11.0.md)）
+- 本ファイル（`docs/tests/dialect/mysql-postgres.md`）が [`../README.md`](../README.md) と [`../../roadmap.md`](../../roadmap.md) からリンクされる
+- TypeORM 計画（#43）の「#73 MySQL 完了ゲート」と矛盾しない（後続受け入れ: [`../typeorm/adapter.md`](../typeorm/adapter.md)）
 
 #### テスト: 異常系
 

@@ -10,13 +10,13 @@
 
 CRUD abstraction for DDD repositories, packaged per language.
 
-Versions are **independent per language**. A repo milestone name (for example planning `v0.7.0`) does not force every language package to publish that number. It is normal for npm to stay on `0.6.0` while the Go module’s first release is `0.7.0`.
+Versions are **independent per language**. A repo milestone name (for example planning `v0.7.0`) does not force every language package to publish that number. Language lines may diverge; today both npm and the Go module are at **`0.11.0`** (`packages/js/package.json` / `packages/go/VERSION`).
 
 ## JavaScript / TypeScript
 
 npm package: **[@b4moss/crudian](./packages/js)** (`packages/js`)
 
-Current published line: see `packages/js/package.json` (for example `0.6.0`).
+Current published line: see `packages/js/package.json` (**`0.11.0`**).
 
 ```bash
 npm install @b4moss/crudian
@@ -40,19 +40,18 @@ Go module: **[github.com/b4moss/crudian/go](./packages/go)** (`packages/go`)
 
 There is **no npm-style package registry upload**. The canonical identity is the **module path** on GitHub; consumers resolve a **git tag** with the Go toolchain (`go get` / `go.mod`). The public module proxy caches source; it is not a separate store you publish tarballs into.
 
-First Go release line: `packages/go/VERSION` → **`0.7.0`**, git tag **`packages/go/v0.7.0`** (nested-module tag form).
+Current Go line: `packages/go/VERSION` → **`0.11.0`**, git tag **`packages/go/v0.11.0`** (nested-module tag form).
 
 ```bash
-go get github.com/b4moss/crudian/go@v0.7.0
+go get github.com/b4moss/crudian/go@v0.11.0
 ```
-
 | Import path | Role |
 |-------------|------|
 | `github.com/b4moss/crudian/go/gorm` | GORM adapter (SQLite / Postgres / MySQL) |
 | `github.com/b4moss/crudian/go/libsql` | libSQL (`database/sql`) adapter (SQLite-compatible) |
 | `github.com/b4moss/crudian/go/crudian` | Shared contract, `Where`, Dialect, CRUD, Pool |
 
-Usage, drivers, and API notes: [`packages/go/README.md`](./packages/go/README.md). Dialect acceptance: [`docs/tests/v0.10.0.md`](./docs/tests/v0.10.0.md).
+Usage, drivers, and API notes: [`packages/go/README.md`](./packages/go/README.md). Dialect acceptance: [`docs/tests/dialect/mysql-postgres.md`](./docs/tests/dialect/mysql-postgres.md).
 
 **Release:** tag `packages/go/vX.Y.Z` matching `VERSION`. Root tag `vX.Y.Z` alone does **not** publish Go. CD creates a GitHub Release and pings the module proxy; it does not upload to npm.
 
@@ -60,12 +59,13 @@ Usage, drivers, and API notes: [`packages/go/README.md`](./packages/go/README.md
 
 | Doc | Contents |
 |-----|----------|
-| [`docs/main.md`](./docs/main.md) | Spec (source of truth), including per-language versioning |
-| [`docs/roadmap.md`](./docs/roadmap.md) | Milestones |
-| [`docs/plans/go-module.md`](./docs/plans/go-module.md) | Go design |
-| [`docs/plans/libsql-adapter.md`](./docs/plans/libsql-adapter.md) | JS libSQL design |
-| [`docs/tests/`](./docs/tests/) | Acceptance tests |
-| [`.github/CI.md`](./.github/CI.md) | CI/CD policy (path-filtered tests, CD per language, gate tests + act smoke) |
+| [`docs/README.md`](./docs/README.md) | Pillar（目的・スコープ・技術方針） |
+| [`docs/index.md`](./docs/index.md) | OKF 索引 |
+| [`docs/specs/`](./docs/specs/) | 現行仕様（ドメイン別） |
+| [`docs/plans/`](./docs/plans/) | これからやる内容 |
+| [`docs/roadmap.md`](./docs/roadmap.md) | マイルストーン |
+| [`docs/tests/`](./docs/tests/) | テスト仕様（specs と同じドメイン切り） |
+| [`.github/CI.md`](./.github/CI.md) | CI/CD policy（path-filtered tests, CD per language, gate tests + act smoke） |
 | [`.github/tests/`](./.github/tests/) | Automated tests for publish/skip gate scripts (`make gate-tests`) |
 
 ## License

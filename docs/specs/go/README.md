@@ -1,17 +1,16 @@
-# Go Module — 設計と進め方
+# Go モジュール仕様
 
-JS 版（`@b4moss/crudian`）の CRUD 契約を Go へ移植する方針のメモ。  
-仕様の正は [`docs/main.md`](../main.md)。マイルストーン割当は [`roadmap.md`](./roadmap.md)。  
-受け入れテストは [`docs/tests/v0.7.0.md`](../tests/v0.7.0.md)。  
-関連 Issue: [#48](https://github.com/b4moss/crudian/issues/48)（マイルストーン v0.7.0）  
-参照: JS 先行（#47 count / #42 libSQL）、Dialect 将来拡張（#73）、可変 PK（#72・本マイルストーン外）
+JS 版（`@b4moss/crudian`）と同等の CRUD 契約を持つ Go module の現行仕様正本。  
+契約の正は [`../contract/`](../contract/)。Dialect は [`../dialect/`](../dialect/)。pillar は [`../../README.md`](../../README.md)。  
+受け入れテストは [`../../tests/go/module.md`](../../tests/go/module.md)。  
+関連 Issue: [#48](https://github.com/b4moss/crudian/issues/48)（実装済み）。
 
 ## 製品意図
 
 - charter / 薄い DDD の共通 CRUD を **Go module** として配布する
 - メソッド語彙・Adapter 切り分けは Node.js 版と同等
-- GORM は各種 RDB に繋がるため、**初手から Dialect 層を切る**（**現状の実装は SQLite のみ**。MySQL / PostgreSQL は将来対応予定で、いまは stub）
-- 実装順（v0.7.0）: (1) GORM / SQLite (2) libSQL SDK → その後に他 RDB Dialect
+- GORM は各種 RDB に繋がるため Dialect 層を切る（**SQLite / Postgres / MySQL 実装済み**。詳細は [`../dialect/`](../dialect/)）
+- アダプタ: (1) GORM (2) libSQL SDK
 
 ## 命名・パス
 
@@ -65,7 +64,7 @@ page, err := crud.Search(ctx, "items", crudian.SearchQuery{
 })
 ```
 
-- 入口は `CreateCrud(db)`。内部で接続を生成しない
+- 入口は `CreateCrud(db, opts...)`。内部で接続を生成しない。`Options.PK` / `Driver` / `Dialect` / `Pool` を渡せる
 - 生の DB を公開（GORM: `*gorm.DB`、libSQL: `*sql.DB`）
 - メソッド: `Create` / `Read` / `Update` / `Delete` / `Search` / `List` / `Count` / `Exists` / `Upsert` / `Duplicate` / `BulkCreate` / `BulkUpdate` / `BulkDelete` / `BulkUpsert` / `Transaction`
 - 行は `map[string]any`（ジェネリクスは必要なら後続）。モデル／構造体マッピングはしない
@@ -76,11 +75,12 @@ page, err := crud.Search(ctx, "items", crudian.SearchQuery{
 
 | 項目 | 値 |
 |------|-----|
-| upsert / bulkUpsert conflict | 主キー列名 `id`（#72 の可変 PK は対象外） |
-| cursor | `id` 昇順。`NextCursor` は生の `id` |
+| upsert / bulkUpsert conflict | 設定中の PK 列（`Options.PK`、既定 `"id"`） |
+| cursor | PK 列昇順。`NextCursor` は生の PK 値 |
 | `SearchResult` | `Items`, `NextCursor`, `HasMore`, `Total` |
 | `Count` | where 全件数。`limit` / `cursor` / `columns` は受け取らない |
 | `Exists` | where 一致の有無（bool）。入力は `Count` と同型。件数は返さない |
+| `PK` | `Options.PK`（既定 `"id"`。空文字は既定扱い。複合 PK 非対応） |
 | `Pool` / `ApplyPool` | `*sql.DB` の MaxOpen / MaxIdle / ConnMaxLifetime / ConnMaxIdleTime。未指定フィールドは触らない。GORM 適用・libSQL no-op |
 | `columns` | `Read` / `Search` / `List` で投影可。省略は全列 |
 | 識別子 | 文字列必須。形式検証なし |
@@ -97,8 +97,7 @@ type Dialect interface {
 }
 ```
 
-- **実装する（v0.7.0）**: `SqliteDialect`（`"ident"`、`?`、既存 JS SQLite SQL と同趣旨）
-- **将来**: Postgres / MySQL Dialect を同インタフェースで実装し、GORM 経由で接続する（本マイルストーンでは stub / 未サポート）
+- **実装済み**: `SqliteDialect` / `PostgresDialect` / `MySQLDialect`（GORM 経由。詳細は [`../dialect/`](../dialect/)）
 
 ## Executor
 
@@ -130,13 +129,13 @@ type Executor interface {
 | ランタイム | Go 1.26 + `testing` |
 | DB | 一時ファイル（推奨）または SQLite `:memory:`（ドライバが TX で安全な場合） |
 | 契約 | JS v0.1 / v0.2 / v0.5 / v0.6 相当を gorm・libsql で一式 |
-| 非対象 | リモート Turso Cloud E2E、GORM の PG/MySQL、可変 PK |
+| 非対象 | リモート Turso Cloud E2E、複合 PK |
 
-詳細: [`docs/tests/v0.7.0.md`](../tests/v0.7.0.md)
+詳細: [`../../tests/go/module.md`](../../tests/go/module.md)
 
 ## CI / 梱包 / 版
 
-- CI: [`.github/CI.md`](../../.github/CI.md) — `packages/go` 変更時のみ lint（`gofmt` / `vet`）+ `go test ./...`（Go 1.26）
+- CI: [`.github/CI.md`](../../../.github/CI.md) — `packages/go` 変更時のみ lint（`gofmt` / `vet`）+ `go test ./...`（Go 1.26）
 - 公開版: `packages/go/VERSION`（初版 **0.7.0**）。npm の版とは独立
 - git タグ: **`packages/go/vX.Y.Z`**（ネスト module の慣習）。ルート `vX.Y.Z` は JS npm 用
 - 配布の正は **module path**（`github.com/b4moss/crudian/go`）。独自パッケージレジストリへの upload はしない。`go get` が git タグを解決する（proxy.golang.org はキャッシュ）
@@ -145,9 +144,7 @@ type Executor interface {
 
 ## 意図的な非対応（v0.7.0）
 
-- **GORM での MySQL / PostgreSQL**（**将来対応予定**。v0.7.0 は SQLite のみ。#73 は JS 側 Dialect の話）
-- 可変 PK カラム名（#72）
-- ORM 風モデル、マイグレーション、全文検索、offset ページング
+- ORM 風モデル、マイグレーション、全文検索
 - PHP
 - goroutine / channel による擬似 async API
 - npm 同時版上げ（JS に変更がなければ `0.6.0` のままでよい）
@@ -158,10 +155,16 @@ type Executor interface {
 |---|------|------|
 | 1 | Module path | `github.com/b4moss/crudian/go` + パッケージ `gorm` / `libsql` / `crudian` |
 | 2 | API 形 | 同期 + `context.Context`（全メソッド） |
-| 3 | Dialect | 初手からインタフェース。**いまは Sqlite のみ実装**。MySQL / Postgres は将来 |
+| 3 | Dialect | インタフェース。Sqlite / Postgres / MySQL 実装済み（#73） |
 | 4 | libSQL | 公式 `libsql-client-go` 第一候補（local `file://` は companion sqlite 要） |
 | 5 | 実装順 | GORM/SQLite → libSQL（→ 後続で他 RDB） |
 | 6 | マイルストーン | v0.7.0（Go 公開 SemVer 初版も 0.7.0） |
-| 7 | PK / cursor | 当面 `id` 固定 |
+| 7 | PK / cursor | 既定 `id`。`Options.PK` で変更可（#72）。cursor は PK 昇順 |
 | 8 | 言語間バージョン | 独立可（npm 据え置きで Go のみリリース可） |
 | 9 | 配布 | module path + `packages/go/v*` タグ。レジストリ upload なし |
+
+## 関連
+
+- テスト: [`../../tests/go/module.md`](../../tests/go/module.md)
+- Dialect: [`../dialect/`](../dialect/)
+- 契約: [`../contract/`](../contract/)

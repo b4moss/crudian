@@ -2,34 +2,35 @@
 
 対象マイルストーン: v0.6.0（libSQL adapter）  
 関連 Issue: [#42](https://github.com/b4moss/crudian/issues/42)  
-仕様: [`../main.md`](../main.md)  
-設計: [`../plans/libsql-adapter.md`](../plans/libsql-adapter.md)  
-ロードマップ: [`../plans/roadmap.md`](../plans/roadmap.md)  
-前提: [`./v0.1.0.md`](./v0.1.0.md) / [`./v0.2.0.md`](./v0.2.0.md) / [`./v0.3.0.md`](./v0.3.0.md) / [`./v0.5.0.md`](./v0.5.0.md)  
+仕様: [`../../README.md`](../../README.md)  
+設計: [`../../specs/libsql/`](../../specs/libsql/)  
+ロードマップ: [`../../roadmap.md`](../../roadmap.md)  
+前提: [`../bun-sqlite/core-crud.md`](../bun-sqlite/core-crud.md) / [`../bun-sqlite/extended-writes.md`](../bun-sqlite/extended-writes.md) / [`../drizzle/adapter.md`](../drizzle/adapter.md) / [`../contract/count-total.md`](../contract/count-total.md)  
 書き方: charter `tdd.md`（氷山パターン）
 
-本ファイルは **#42（`@b4moss/crudian/libsql`）** の受け入れを扱う。  
-サブパスは商業サービス名 Turso ではなく **libSQL**（SDK: `@libsql/client`）。
+本ファイルは **#42（`@b4moss/crudian/libsql`）** 導入時の受け入れを扱う。  
+サブパスは商業サービス名 Turso ではなく **libSQL**（SDK: `@libsql/client`）。  
+後続能力: offset / 可変 PK → [`../contract/offset-pagination.md`](../contract/offset-pagination.md)、`exists` → [`../contract/exists.md`](../contract/exists.md)。
 
 ## 共通前提
 
 | 項目 | 値 |
 |------|-----|
 | 対象 | `@b4moss/crudian/libsql` |
-| 契約 | bun-sqlite / prisma と同等の語彙・振る舞い（現行契約: CRUD / search / list / count / total / upsert / duplicate / bulk* / transaction） |
+| 契約 | bun-sqlite / prisma と同等の語彙・振る舞い（CRUD / search / list / count / total / upsert / duplicate / bulk* / transaction） |
 | 共有 | 型・`where` ビルダー・`CrudianError` は `@b4moss/crudian`。実装は `sqlite/async-crud` を再利用 |
-| ランタイム / テスト | **Node.js 24+** + `node:test`（`node --test` / `tsx --test`）。アダプタ固有（共有スイートなし） |
+| ランタイム / テスト | **Node.js 24+** + `node:test`（`node --test` / `tsx --test`）。アダプタ固有 |
 | DB | 呼び出し側注入の `@libsql/client`。テストは一時ファイル DB（`file:...`）。クラウド資格情報は使わない。`:memory:` は接続／TX で別 DB になりやすいためテストでは使わない |
-| 入口 | `createCrud(client)`。パスや接続を内部生成しない |
-| upsert / bulkUpsert conflict | 主キー `id` |
+| 入口 | `createCrud(client, options?)`。パスや接続を内部生成しない |
+| upsert / bulkUpsert conflict | 設定中の PK 列（既定 `id`） |
 | 単発書き込み戻り値 | 対象行（`read` / `update` / `duplicate` の0件は `null`）。すべて `Promise` |
 | bulk 戻り値 | 件数のみ（`Promise<number>`） |
-| `SearchResult` | `{ items, nextCursor, hasMore, total }`（v0.5.0 契約） |
+| `SearchResult` | offset / cursor 両対応（後続 #90）。本導入時の観測は cursor 形 + `total` |
 | `count` | `CountQuery`（`{ where? }`）→ `Promise<number>` |
-| cursor | 当面 `id` 昇順。`nextCursor` は生の `id` |
+| cursor | PK 列昇順（既定 `id`）。`nextCursor` は生の PK 値 |
 | 識別子 | 文字列必須。形式検証なし（下位例外に任せる） |
 | 独自エラー | 最小限。他は下位（`@libsql/client`）例外を伝播 |
-| 対象外 | リモート Turso Cloud E2E、`@tursodatabase/serverless`、TypeORM、PHP / Go、全文検索、offset pagination |
+| 本ファイルの範囲外（後続へ） | offset / 可変 PK → [`../contract/offset-pagination.md`](../contract/offset-pagination.md)、`exists` → [`../contract/exists.md`](../contract/exists.md)。常時対象外: リモート Turso Cloud E2E、`@tursodatabase/serverless`、全文検索 |
 
 フィクスチャ表（例）は整数主キー `id` を持つ単表。スキーマはテスト内 DDL で用意してよい。  
 **同等性の判定:** 同じ操作列に対し、prisma（async）および bun-sqlite 仕様（v0.1 / v0.2 / v0.5）と同じ観測結果になること。

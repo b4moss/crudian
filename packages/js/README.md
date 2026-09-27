@@ -50,6 +50,7 @@ db.exec(`
 `)
 const crud = createCrud(db)
 // raw DB is also available as crud.db
+// optional: createCrud(db, { pk: "item_id" })
 ```
 
 ### Drizzle (better-sqlite3) — sync
@@ -300,7 +301,7 @@ crud.exists("items", { where: where().eq("name", "n0") }) // true / false
 
 ### `upsert(table, cols)` → row
 
-Conflict target is primary key `id`. Inserts or updates; returns the row. `id` is required in `cols`.
+Conflict target is the configured primary key column (default `id`; set via `createCrud(db, { pk })`). Inserts or updates; returns the row. That PK column is required in `cols`.
 
 ```ts
 const inserted = crud.upsert<Item>("items", { id: 10, name: "new", score: 1 })
@@ -310,7 +311,7 @@ const again = crud.upsert<Item>("items", { id: 10, name: "upd", score: 9 })
 
 ### `duplicate(table, query)` → row | `null`
 
-Copies the first matching row (new `id`). Optional `overrides`. Zero matches → `null`. `where` is required.
+Copies the first matching row (new PK value from the DB). Optional `overrides`. Zero matches → `null`. `where` is required.
 
 ```ts
 const source = crud.create<Item>("items", { name: "a", score: 1, note: "n" })
@@ -360,7 +361,7 @@ const n = crud.bulkDelete("items", { where: where().eq("name", "y") })
 
 ### `bulkUpsert(table, rows)` → number
 
-Upserts many rows (each row needs `id`); returns processed count. Empty array → `0`.
+Upserts many rows (each row needs the configured PK); returns processed count. Empty array → `0`.
 
 ```ts
 const n = crud.bulkUpsert("items", [
@@ -437,20 +438,22 @@ Nestable `and` / `or`. Empty `in([])` is rejected.
 | Topic | Behavior |
 |-------|----------|
 | Entry | `createCrud(db, options?)` — inject a caller-owned client; exposed as `crud.db` |
-| Dialects | Shared Dialect layer: SQLite (all adapters), Postgres / MySQL via **Prisma** / **TypeORM** (`options.dialect` or DataSource type) |
+| `options.pk` | Primary key column name (default `"id"`). Empty / non-string rejected. Missing column → `CrudianError` |
+| `options.dialect` | `"sqlite" \| "postgres" \| "mysql"` for Prisma / TypeORM (TypeORM also infers from `DataSource.options.type`). SQLite-only adapters ignore |
+| Dialects | Shared Dialect layer: SQLite (all adapters), Postgres / MySQL via **Prisma** / **TypeORM** |
 | Drizzle | **SQLite (better-sqlite3) only** in this line; PG/MySQL subpaths are out of scope |
 | Sync vs async | `bun-sqlite` / `drizzle` sync; `prisma` / `libsql` / `typeorm` return `Promise`s |
 | `read` / `update` / `duplicate` miss | `null` |
 | `delete` / bulk miss | `0` |
-| Upsert conflict | application-level on PK (default `id`; no SQL `ON CONFLICT`) |
-| Pagination | `paging?: "offset" \| "cursor"` (default `"offset"`) |
+| Upsert conflict | application-level on configured PK (default `id`; no SQL `ON CONFLICT`) |
+| Pagination | `paging?: "offset" \| "cursor"` (default `"offset"`); keyset uses PK ascending |
 | `columns` | optional on `read` / `search` / `list`; omit → `*` |
 | `search.total` / `count` | full where count; not page length |
 | `exists` | boolean presence; same input as `count` |
 | Pool | caller-owned; Prisma via datasource settings; TypeORM via DataSource options; SQLite adapters no-op |
 | Errors | minimal `CrudianError`; other errors propagate from the driver |
 | Identifiers | string required; no format validation |
-| Out of scope | relations graph CRUD, migrations ownership, full-text search, Entity-as-first-arg API |
+| Out of scope | relations graph CRUD, migrations ownership, full-text search, Entity-as-first-arg API, composite PK |
 
 ## License
 

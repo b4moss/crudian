@@ -11,15 +11,14 @@ API shape: **synchronous methods with `context.Context` as the first argument** 
 Go does not use an npm-like registry for this package. You depend on the **module path**; the toolchain fetches the matching **git tag** (often via `proxy.golang.org` as a cache).
 
 ```bash
-go get github.com/b4moss/crudian/go@v0.9.0
+go get github.com/b4moss/crudian/go@v0.11.0
 ```
 
 Or in `go.mod`:
 
 ```go
-require github.com/b4moss/crudian/go v0.9.0
+require github.com/b4moss/crudian/go v0.11.0
 ```
-
 | Item | Value |
 |------|--------|
 | Module path | `github.com/b4moss/crudian/go` |
@@ -39,6 +38,14 @@ Language versions are independent of the npm package.
 | `.../go/crudian` | shared types | `Where`, Dialects, `Crud`, queries, `PoolOptions` |
 
 `CreateCrud` never opens connections. The caller owns the DB and can use `crud.DB` for escapes.
+
+Optional `crudian.Options`:
+
+| Field | Meaning |
+|-------|---------|
+| `PK` | Primary key column (default `"id"`). Empty → default. Composite PK unsupported |
+| `Driver` / `Dialect` | SQL dialect (`sqlite` / `postgres` / `mysql`; default sqlite) |
+| `Pool` | Applied on GORM; ignored by libSQL |
 
 ### Dialect (#73)
 
@@ -131,7 +138,7 @@ db, err := gormio.Open(postgres.Open(dsn), &gormio.Config{})
 crud, err := gorm.CreateCrud(db, crudian.Options{Driver: "postgres"})
 ```
 
-Tests: `go test ./gorm/ -run TestPostgresDialectContract` / `TestMySQLDialectContract` (local or docker DB; see [`docs/tests/v0.10.0.md`](../../docs/tests/v0.10.0.md)).
+Tests: `go test ./gorm/ -run TestPostgresDialectContract` / `TestMySQLDialectContract` (local or docker DB; see [`docs/tests/dialect/mysql-postgres.md`](../../docs/tests/dialect/mysql-postgres.md)).
 
 ## libSQL
 
@@ -169,14 +176,14 @@ All methods take `ctx context.Context` first. Table names are plain strings.
 | `Search` / `List` | `SearchResult` | offset (default) or cursor; includes `Total` |
 | `Count` | `int64` | `Where` only |
 | `Exists` | `bool` | `Where` only; presence sugar (`Count > 0`) |
-| `Upsert` | row | requires PK in cols; app-level |
+| `Upsert` | row | requires configured PK in cols; app-level |
 | `Duplicate` | row or `nil` | requires `Where` |
 | `BulkCreate` / `BulkUpdate` / `BulkDelete` / `BulkUpsert` | count | |
 | `Transaction` | error | explicit only; CRUD does not auto-begin |
 
 `Where` builders: `Eq` / `Ne` / `Lt` / `Gt` / `Lte` / `Gte` / `In` / `Like` / `IsNull` / `IsNotNull`, plus nestable `And` / `Or`.
 
-Spec: [`docs/main.md`](../../docs/main.md), tests: [`docs/tests/v0.10.0.md`](../../docs/tests/v0.10.0.md).
+Spec: [`docs/README.md`](../../docs/README.md) / [`docs/specs/go/`](../../docs/specs/go/), tests: [`docs/tests/go/module.md`](../../docs/tests/go/module.md) / [`docs/tests/dialect/mysql-postgres.md`](../../docs/tests/dialect/mysql-postgres.md).
 
 ## Versioning and release
 
@@ -189,6 +196,6 @@ CI policy: [`.github/CI.md`](../../.github/CI.md).
 ## Out of scope
 
 - TypeORM / PHP packages
-- Configurable composite primary keys
+- Composite primary keys (single-column `Options.PK` is supported)
 - ORM model mapping, migrations, full-text search
 - Putting pool settings on the Dialect interface
