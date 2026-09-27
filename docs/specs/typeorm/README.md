@@ -58,7 +58,7 @@ await crud.create("items", { name: "alpha", score: 1 })
 await crud.search("items", { where: where().eq("name", "alpha") })
 ```
 
-- 入口は `createCrud(dataSource)`。接続生成・`initialize` は呼び出し側
+- 入口は `createCrud(dataSource, options?)`。接続生成・`initialize` は呼び出し側。`options.pk` / `options.dialect`（未指定時は `dataSource.options.type` から推論）
 - 生の `DataSource` を `crud.db` で公開（JOIN・QueryBuilder 直叩き等の非 CRUD 用）
 - メソッドは既存 async 面と同等（`create` / `read` / `update` / `delete` / `search` / `list` / `count` / `upsert` / `duplicate` / `bulk*` / `transaction`）
 - 第一引数の表名は **文字列**。Entity クラスを渡す API は初版の必須ではない
@@ -163,11 +163,11 @@ Node.js / Bun 向けに TypeORM アダプタ `@b4moss/crudian/typeorm` を追加
 
 ## スコープ（このイシュー）
 
-- [ ] `packages/js/src/typeorm` + `exports["./typeorm"]` + optional peer `typeorm`
-- [ ] `createCrud(dataSource)` と既存 async CRUD 面の実装
-- [ ] SQLite / Postgres / MySQL それぞれで契約テストが通ること
-- [ ] Node 24+ と Bun の両方でテストが通ること
-- [ ] migrations / relations / subscribers 利用下での単表 CRUD の振る舞いをドキュメント化
+- [x] `packages/js/src/typeorm` + `exports["./typeorm"]` + optional peer `typeorm`
+- [x] `createCrud(dataSource, options?)` と既存 async CRUD 面の実装
+- [x] SQLite / Postgres / MySQL それぞれで契約テストが通ること
+- [x] Node 24+ と Bun の両方でテストが通ること
+- [x] migrations / relations / subscribers 利用下での単表 CRUD の振る舞いをドキュメント化
 - [x] README / 仕様（`docs/specs/typeorm/`）の更新
 
 ## 非目標
@@ -186,11 +186,11 @@ Node.js / Bun 向けに TypeORM アダプタ `@b4moss/crudian/typeorm` を追加
 
 ## Acceptance
 
-- [ ] `@b4moss/crudian/typeorm` から `createCrud(DataSource)` が使える
-- [ ] 既存契約（CRUD / search / count / bulk* / transaction 等）が TypeORM 経路で通る
-- [ ] SQLite + Postgres + MySQL のテストが緑
-- [ ] Node 24+ と Bun の両方でテストが緑
-- [ ] ドキュメントに注入面・表名第一級・非目標が明記されている
+- [x] `@b4moss/crudian/typeorm` から `createCrud(DataSource)` が使える
+- [x] 既存契約（CRUD / search / count / bulk* / transaction 等）が TypeORM 経路で通る
+- [x] SQLite + Postgres + MySQL のテストが緑
+- [x] Node 24+ と Bun の両方でテストが緑
+- [x] ドキュメントに注入面・表名第一級・非目標が明記されている
 ```
 
 ## 関連

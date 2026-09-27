@@ -9,7 +9,8 @@ bun-sqlite と同じ共有契約を、Node.js 向け Drizzle クライアント�
 
 ## 振る舞い
 
-- 入口: `createCrud(db)`。呼び出し側が作った Drizzle DB を注入。生クライアントを公開
+- 入口: `createCrud(db, options?)`。呼び出し側が作った Drizzle DB を注入。生クライアントを公開
+- `options.pk` で PK 列名を変更可（共有契約どおり）
 - メソッド面は共有契約どおり（CRUD / search / list / count / exists / upsert / duplicate / bulk* / transaction）
 - SQL 方言は SQLite。Postgres / MySQL の Drizzle subpath は現行対象外
 - ランタイム / テスト: Node.js 24+ + `node:test`

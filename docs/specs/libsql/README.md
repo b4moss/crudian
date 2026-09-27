@@ -45,7 +45,7 @@ await crud.create("items", { name: "alpha", score: 1 })
 await crud.search("items", { where: where().eq("name", "alpha") })
 ```
 
-- 入口は `createCrud(client)`。接続生成は呼び出し側
+- 入口は `createCrud(client, options?)`。接続生成は呼び出し側。`options.pk` 対応（SQLite 方言固定）
 - 生の client を `crud.db` で公開（JOIN 等の非 CRUD 用）
 - メソッドは prisma と同じ async 面（`create` / `read` / `update` / `delete` / `search` / `list` / `count` / `upsert` / `duplicate` / `bulk*` / `transaction`）
 - SQL 方言は既存 `sqlite/sql`（`?` プレースホルダ）。libSQL の名前付き引数は使わない

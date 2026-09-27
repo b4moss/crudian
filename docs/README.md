@@ -10,7 +10,15 @@ DDD の Repository 層向け CRUD 抽象ライブラリ。
 
 ## API
 
-入口: `createCrud(db)`（呼び出し側の `Database` を注入）
+入口: `createCrud(db, options?)`（呼び出し側の接続／クライアントを注入。内部で開かない）
+
+**options（JS `CreateCrudOptions` / Go `crudian.Options`）**
+
+| 項目 | JS | Go | 既定 |
+|------|----|----|------|
+| 主キー列名 | `pk?: string` | `PK string` | `"id"` |
+| SQL 方言 | `dialect?: "sqlite" \| "postgres" \| "mysql"` | `Dialect` / `Driver` | sqlite（TypeORM は `DataSource.options.type` から推論可） |
+| 接続プール | （型 `PoolOptions` は文書化用。実体は呼び出し側） | `Pool *PoolOptions`（GORM 適用・libSQL no-op） | — |
 
 - `create`（対象行を返す）
 - `read`（未ヒットは `null`。`columns?` で投影可）
@@ -20,9 +28,9 @@ DDD の Repository 層向け CRUD 抽象ライブラリ。
 - `exists`（where 一致行の有無を `boolean` で返す。入力は `count` と同型。件数は返さない）
 - `update`（対象行を返す。0件なら `null`）
 - `delete`（影響件数を返す）
-- `upsert`（conflict は主キー `id`。対象行を返す）
+- `upsert`（conflict は **設定中の PK 列**（既定 `id`）。対象行を返す。cols にその PK が必須）
 - `bulkCreate` / `bulkUpdate` / `bulkDelete` / `bulkUpsert`（いずれも件数のみ返す）
-- `duplicate`（対象行を返す。0件なら `null`）
+- `duplicate`（対象行を返す。0件なら `null`。新行の PK は採番に任せる）
 - `transaction`（ヘルパ。ライブラリは自動ではトランザクションを張らない）
 
 ### 条件・演算子
@@ -33,19 +41,20 @@ DDD の Repository 層向け CRUD 抽象ライブラリ。
 ## 備考
 
 - `limit` と pagination を提供する。方式は `paging` で切替（**デフォルト `"offset"`**。cursor が必要なら `paging: "cursor"` を明示）
-- offset 時は `offset`（default `0`）+ `limit`。cursor 時は既存どおり `cursor` + `limit`（`id` 昇順 keyset。`nextCursor` は生の `id`）
+- offset 時は `offset`（default `0`）+ `limit`。cursor 時は `cursor` + `limit`（**PK 列**昇順 keyset。`nextCursor` は生の PK 値）
 - モードと相反する入力（offset↔cursor）は拒否する（独自最小エラー）
-- 両モードとも当面 `id` 昇順固定
+- 両モードとも当面 **単一 PK 列**の昇順固定（列名は `pk` / `PK` で変更可。複合 PK は非対応）
+- 空文字 / 非文字列の `pk` は拒否。表に列が無いときは独自最小エラー（下位例外に任せない）
 - `search` / `list` の `total` と `count()` は where 全件数（limit / offset / cursor 非依存）。`count` は `search` と同じ where コンパイルを流用する
 - 存在の有無だけが必要なら `exists`、件数が必要なら `count`（`exists` は `count > 0` の糖衣。実装は `SELECT 1 … LIMIT 1`）
 - Go の接続プール／lifetime は `Options.Pool` / `ApplyPool`（GORM で適用、libSQL は no-op）
-- JS のプールは呼び出し側（Prisma datasource 等）。型 `PoolOptions` は文書化用。SQLite アダプタは no-op（#73 / [`tests/dialect/mysql-postgres.md`](./tests/dialect/mysql-postgres.md)）
-- **Dialect:** SQLite / Postgres / MySQL。JS は Prisma の `options.dialect`、Go は GORM の `Options.Driver` / `Dialect`。Drizzle は SQLite のみ。MySQL は `RETURNING` 非使用（insert 後 SELECT）
+- JS のプールは呼び出し側（Prisma datasource / TypeORM DataSource 等）。型 `PoolOptions` は文書化用。SQLite アダプタは no-op（#73 / [`tests/dialect/mysql-postgres.md`](./tests/dialect/mysql-postgres.md)）
+- **Dialect:** SQLite / Postgres / MySQL。JS は Prisma / TypeORM の `options.dialect`（TypeORM は DataSource `type` からも推論）。Go は GORM の `Options.Driver` / `Dialect`。Drizzle / bun-sqlite / libsql は SQLite のみ。MySQL は `RETURNING` 非使用（insert 後 SELECT）
 - 全文検索には対応しない
-- 行データはジェネリクスで型付けする
+- 行データはジェネリクスで型付けする（Go は `map[string]any`）
 - 契約語彙は PHP / Go にも写せる形を先に寄せる
-- 識別子（テーブル・カラム名）は形式検証しない。ただし文字列必須。不正時は SQLite エラーに任せる
-- 独自エラーは最小限。それ以外は下位（SQLite）例外を伝播する
+- 識別子（テーブル・カラム名）は形式検証しない。ただし文字列必須。不正時は下位例外を伝播する
+- 独自エラーは最小限。それ以外は下位例外を伝播する
 
 ## 契約決定事項
 
@@ -57,9 +66,9 @@ DDD の Repository 層向け CRUD 抽象ライブラリ。
 |---|------|------|
 | 1 | `read` 未ヒット | `null` を返す |
 | 2 | `list` / `search` | 実質同じ（片方正式、片方別名） |
-| 3 | cursor | 当面 `id` 昇順固定 |
+| 3 | cursor | 当面単一 PK 列の昇順固定（列名は後に `pk` / `PK` で変更可。#72） |
 | 4 | 条件 | ネスト可能な and/or 条件木 |
-| 5 | upsert conflict | 主キー（`id`）前提 |
+| 5 | upsert conflict | 主キー前提（既定列名 `id`。#72 で変更可） |
 | 6 | 行型 | ジェネリクス |
 | 7 | DB 生成（bun-sqlite） | 呼び出し側の `Database` を注入 |
 | 8 | 生 `Database` | 最初から公開 |
@@ -86,9 +95,9 @@ DDD の Repository 層向け CRUD 抽象ライブラリ。
 | # | 項目 | 決定 |
 |---|------|------|
 | 1 | `update` / `duplicate` の0件 | `null` を返す |
-| 2 | `nextCursor` | 生の `id` |
+| 2 | `nextCursor` | 生の PK 値（既定列 `id`） |
 | 3 | `bulk*` 戻り値 | すべて件数のみ |
-| 4 | ファクトリ名 | `createCrud(db)` |
+| 4 | ファクトリ名 | `createCrud(db, options?)` |
 
 契約・アダプタ仕様: [`specs/contract/`](./specs/contract/) / [`specs/bun-sqlite/`](./specs/bun-sqlite/) / [`specs/libsql/`](./specs/libsql/)。
 
@@ -99,22 +108,24 @@ DDD の Repository 層向け CRUD 抽象ライブラリ。
 パッケージ名: **`@b4moss/crudian`**（`packages/js`）
 
 Node.js / Bun など JS エコシステム向け。ディレクトリ名の `js` は広範な呼称であり、実装言語は TypeScript。  
-配布物は `tsc` で生成した `dist`。subpath / `exports` 条件で Bun 向け（`bun-sqlite`）と Node / Bun 向け（`drizzle` / `prisma` / `libsql`）を出し分ける。  
-Node から `@b4moss/crudian/bun-sqlite` を読んだ場合は、読み込み時に誤 import を示す明示エラーを出す。
+配布物は `tsc` で生成した `dist`。subpath / `exports` 条件で Bun 向け（`bun-sqlite`）と Node / Bun 向け（`drizzle` / `prisma` / `libsql` / `typeorm`）を出し分ける。  
+Node から `@b4moss/crudian/bun-sqlite` を読んだ場合は、読み込み時に誤 import を示す明示エラーを出す。  
+現行公開版: `packages/js/package.json`（いま **`0.11.0`**）。
 
 | subpath | 対象 |
 |---------|------|
-| `@b4moss/crudian` | 共有契約・型 |
-| `@b4moss/crudian/bun-sqlite` | Bun `bun:sqlite` |
-| `@b4moss/crudian/drizzle` | Drizzle |
-| `@b4moss/crudian/prisma` | Prisma |
-| `@b4moss/crudian/libsql` | libSQL（`@libsql/client`。Turso Cloud 等のホスト先を含む） |
+| `@b4moss/crudian` | 共有契約・型（`where` / `CreateCrudOptions` / `PoolOptions` 等） |
+| `@b4moss/crudian/bun-sqlite` | Bun `bun:sqlite`（sync） |
+| `@b4moss/crudian/drizzle` | Drizzle + better-sqlite3（sync・SQLite のみ） |
+| `@b4moss/crudian/prisma` | Prisma（async。SQLite / Postgres / MySQL） |
+| `@b4moss/crudian/libsql` | libSQL（`@libsql/client`。async・SQLite 互換） |
 | `@b4moss/crudian/typeorm` | TypeORM `DataSource`（async。SQLite / Postgres / MySQL） |
 
 ```ts
 import { createCrud } from "@b4moss/crudian/bun-sqlite"
 
 const crud = createCrud(db)
+const byItemId = createCrud(db, { pk: "item_id" })
 ```
 
 アダプタ詳細: [`specs/bun-sqlite/`](./specs/bun-sqlite/) / [`drizzle`](./specs/drizzle/) / [`prisma`](./specs/prisma/) / [`libsql`](./specs/libsql/) / [`typeorm`](./specs/typeorm/)
@@ -159,7 +170,7 @@ Packagist **`b4moss/crudian`** 単一パッケージを予定。方針・層分�
 | **v0.5.0** | `count()` と `SearchResult.total`（#47） |
 | **v0.6.0** | libSQL アダプタ（`@b4moss/crudian/libsql` / `@libsql/client`。#42） |
 | **v0.7.0** | Go モジュール（`go/gorm` + `go/libsql`。初版は SQLite。#48） |
-| **v0.8.0** | `search` / `list` の offset pagination と `paging` 切替（デフォルト `"offset"`。#90）。JS 全アダプタ + Go |
+| **v0.8.0** | `search` / `list` の offset pagination と `paging` 切替（デフォルト `"offset"`。#90）。可変 PK（`pk` / `PK`。#72）。JS 全アダプタ + Go |
 | **v0.9.0** | `exists` / `Exists`（boolean 糖衣。#106）。Go 接続プール／lifetime（GORM 適用・libSQL no-op。#105。JS は #73 / v0.10.0） |
 | **v0.10.0** | Dialect / MySQL・Postgres（#73）。JS Prisma + Go GORM。JS プール文書化（#105 連動）。受け入れ: [`tests/dialect/mysql-postgres.md`](./tests/dialect/mysql-postgres.md) |
 | **v0.11.0** | TypeORM アダプタ（#43）+ codecov 75%（#96）。受け入れ: [`tests/typeorm/adapter.md`](./tests/typeorm/adapter.md) |
@@ -167,11 +178,11 @@ Packagist **`b4moss/crudian`** 単一パッケージを予定。方針・層分�
 ## バージョン方針
 
 - **言語（配布物）ごとに独立した SemVer** を持つ
-  - JS/TS: `packages/js/package.json` → npm `@b4moss/crudian`（例: `0.6.0`）。git タグ `vX.Y.Z`
-  - Go: `packages/go/VERSION` → module `github.com/b4moss/crudian/go`（例: 初版 `0.7.0`）。git タグ `packages/go/vX.Y.Z`
-  - PHP: `packages/php/composer.json` → Packagist `b4moss/crudian`。git タグ `packages/php/vX.Y.Z`（未実装）
-- **同一言語パッケージ内**ではアダプタ別バージョンは切らない（JS の bun-sqlite / drizzle / prisma / libsql、Go の gorm / libsql、PHP の PDO / libSQL はいずれも単一配布物に同梱）
-- 言語間で版が揃わない・飛ぶことは **許容**（例: npm が `0.6.0` のまま Go だけ `0.7.0` を初公開）
+  - JS/TS: `packages/js/package.json` → npm `@b4moss/crudian`（現行 **`0.11.0`**）。git タグ `vX.Y.Z`
+  - Go: `packages/go/VERSION` → module `github.com/b4moss/crudian/go`（現行 **`0.11.0`**）。git タグ `packages/go/vX.Y.Z`
+  - PHP: `packages/php/composer.json` → Packagist `b4moss/crudian`。git タグ `packages/php/vX.Y.Z`（未実装・`packages/php/` はプレースホルダのみ）
+- **同一言語パッケージ内**ではアダプタ別バージョンは切らない（JS の bun-sqlite / drizzle / prisma / libsql / typeorm、Go の gorm / libsql、PHP の PDO / libSQL はいずれも単一配布物に同梱）
+- 言語間で版が揃わない・飛ぶことは **許容**（歴史的には npm `0.6.0` のまま Go だけ `0.7.0` を初公開した）
 - マイルストーン名（リポジトリ計画の v0.7.0 等）は作業単位であり、各言語の公開 SemVer と 1:1 である必要はない
 
 ## 配布

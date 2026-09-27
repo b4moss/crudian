@@ -47,7 +47,7 @@ crud.transaction(fn)                // ヘルパ（自動 TX は張らない）
 - 行データはジェネリクスで型付けする（例: `read<T>(...)`）
 - 条件はビルダー API を主とし、and/or 木は内部表現
 - 演算子: `eq/ne/lt/gt/lte/gte/in/like/isNull/isNotNull`
-- 入口は `createCrud(db)`。呼び出し側が作った `Database` を注入する
+- 入口は `createCrud(db, options?)`。呼び出し側が作った `Database` を注入する。`options.pk` で PK 列名を変更可
 - JOIN 等の非 CRUD 用に、生の `Database`（`bun:sqlite`）を最初から公開する
 - 識別子は文字列必須のみ（形式検証なし）。不正時は SQLite エラー
 - 独自エラーは最小限。他は SQLite 例外を伝播
@@ -69,9 +69,9 @@ crud.transaction(fn)                // ヘルパ（自動 TX は張らない）
 |---|------|------|
 | 1 | `read` 未ヒット | `null` を返す（throw しない） |
 | 2 | `list` / `search` | 実質同じ。片方を正式、もう片方を薄い別名 |
-| 3 | cursor | 当面 `id` 昇順固定 |
+| 3 | cursor | 単一 PK 列の昇順固定（既定 `id`。`options.pk` で変更可） |
 | 4 | 条件 | ネスト可能な and/or 条件木 |
-| 5 | upsert conflict | 主キー（`id`）前提 |
+| 5 | upsert conflict | 主キー前提（既定列 `id`。`options.pk` で変更可） |
 | 6 | 行型 | ジェネリクス |
 | 7 | DB 生成 | 呼び出し側の `Database` を注入 |
 | 8 | 生 `Database` | 最初から公開 |
@@ -100,7 +100,7 @@ crud.transaction(fn)                // ヘルパ（自動 TX は張らない）
 | 1 | `update` / `duplicate` の0件 | `null` を返す |
 | 2 | `nextCursor` | 生の `id` |
 | 3 | `bulk*` 戻り値 | すべて件数のみ |
-| 4 | ファクトリ名 | `createCrud(db)` |
+| 4 | ファクトリ名 | `createCrud(db, options?)` |
 
 詳細は [`docs/README.md`](../../README.md) の「契約決定事項」も参照。
 

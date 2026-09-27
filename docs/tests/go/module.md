@@ -8,8 +8,9 @@
 前提（契約の正・JS）: [`../bun-sqlite/core-crud.md`](../bun-sqlite/core-crud.md) / [`../bun-sqlite/extended-writes.md`](../bun-sqlite/extended-writes.md) / [`../contract/count-total.md`](../contract/count-total.md) / [`../libsql/adapter.md`](../libsql/adapter.md)  
 書き方: charter `tdd.md`（氷山パターン）
 
-本ファイルは **#48（Go: `gorm` / `libsql`）** の受け入れを扱う。  
-API は **同期 + `context.Context`**。JS の sync/async 分裂は持たない。
+本ファイルは **#48（Go: `gorm` / `libsql`）** 導入時の受け入れを扱う。  
+API は **同期 + `context.Context`**。JS の sync/async 分裂は持たない。  
+後続で入った能力の受け入れ正本: offset / 可変 PK → [`../contract/offset-pagination.md`](../contract/offset-pagination.md)、`Exists` / Pool → [`../contract/exists.md`](../contract/exists.md)、Postgres / MySQL Dialect → [`../dialect/mysql-postgres.md`](../dialect/mysql-postgres.md)。
 
 ## 共通前提
 
@@ -18,18 +19,18 @@ API は **同期 + `context.Context`**。JS の sync/async 分裂は持たない
 | 対象 | `github.com/b4moss/crudian/go/gorm` / `github.com/b4moss/crudian/go/libsql` |
 | 共有 | `github.com/b4moss/crudian/go/crudian`（型・`Where`・Dialect・CRUD） |
 | 契約 | JS bun-sqlite / prisma / libsql と同等の語彙・振る舞い |
-| ランタイム / テスト | **Go 1.26** + `testing`。アダプタ固有（共有スイートの強制共有はしない） |
+| ランタイム / テスト | **Go 1.26** + `testing`（`go.mod` は 1.25+。CI / docker は 1.26）。アダプタ固有 |
 | DB | 呼び出し側が接続を注入。テストは一時ファイル SQLite（または TX 安全な `:memory:`）。クラウド資格情報不要 |
-| 入口 | `CreateCrud(db)`。パスや接続を内部生成しない |
-| upsert / bulkUpsert conflict | 主キー列名 `id` |
+| 入口 | `CreateCrud(db, opts...)`。パスや接続を内部生成しない |
+| upsert / bulkUpsert conflict | 設定中の PK 列（`Options.PK`、既定 `"id"`） |
 | 単発書き込み戻り値 | 対象行。`Read` / `Update` / `Duplicate` の0件は行なし（error にしない） |
 | bulk 戻り値 | 件数のみ |
-| `SearchResult` | `Items`, `NextCursor`, `HasMore`, `Total` |
-| `Count` | where 全件数。`CountQuery` は where のみ |
-| cursor | 当面 `id` 昇順。`NextCursor` は生の `id` |
+| `SearchResult` | `Items`, `NextCursor`, `HasMore`, `Total`（offset 時は `Offset` / `Limit` も） |
+| `Count` / `Exists` | where のみ。`Exists` は bool 糖衣 |
+| cursor | PK 列昇順（既定 `id`）。`NextCursor` は生の PK 値 |
 | `columns` | `Read` / `Search` / `List` で投影可。省略は全列 |
 | 識別子 / エラー | 文字列必須・形式検証なし。独自エラー最小。他は下位例外 |
-| 対象外 | GORM の PG/MySQL（**v0.7.0 未実装 → [`../dialect/mysql-postgres.md`](../dialect/mysql-postgres.md) / #73**）、可変 PK（#72）、リモート Turso Cloud E2E、PHP、offset、全文検索 |
+| 本ファイルの範囲外（後続受け入れへ） | GORM の PG/MySQL → [`../dialect/mysql-postgres.md`](../dialect/mysql-postgres.md)、可変 PK / offset → [`../contract/offset-pagination.md`](../contract/offset-pagination.md)、Pool → [`../contract/exists.md`](../contract/exists.md)。常時対象外: リモート Turso Cloud E2E、PHP、全文検索、複合 PK |
 
 フィクスチャ表（例）は整数主キー `id` を持つ単表。スキーマはテスト内 DDL で用意してよい。  
 **同等性の判定:** 同じ操作列に対し、JS 仕様（v0.1 / v0.2 / v0.5）と同じ観測結果になること。

@@ -10,13 +10,13 @@
 
 CRUD abstraction for DDD repositories, packaged per language.
 
-Versions are **independent per language**. A repo milestone name (for example planning `v0.7.0`) does not force every language package to publish that number. It is normal for npm to stay on `0.6.0` while the Go module’s first release is `0.7.0`.
+Versions are **independent per language**. A repo milestone name (for example planning `v0.7.0`) does not force every language package to publish that number. Language lines may diverge; today both npm and the Go module are at **`0.11.0`** (`packages/js/package.json` / `packages/go/VERSION`).
 
 ## JavaScript / TypeScript
 
 npm package: **[@b4moss/crudian](./packages/js)** (`packages/js`)
 
-Current published line: see `packages/js/package.json` (for example `0.6.0`).
+Current published line: see `packages/js/package.json` (**`0.11.0`**).
 
 ```bash
 npm install @b4moss/crudian
@@ -40,12 +40,11 @@ Go module: **[github.com/b4moss/crudian/go](./packages/go)** (`packages/go`)
 
 There is **no npm-style package registry upload**. The canonical identity is the **module path** on GitHub; consumers resolve a **git tag** with the Go toolchain (`go get` / `go.mod`). The public module proxy caches source; it is not a separate store you publish tarballs into.
 
-First Go release line: `packages/go/VERSION` → **`0.7.0`**, git tag **`packages/go/v0.7.0`** (nested-module tag form).
+Current Go line: `packages/go/VERSION` → **`0.11.0`**, git tag **`packages/go/v0.11.0`** (nested-module tag form).
 
 ```bash
-go get github.com/b4moss/crudian/go@v0.7.0
+go get github.com/b4moss/crudian/go@v0.11.0
 ```
-
 | Import path | Role |
 |-------------|------|
 | `github.com/b4moss/crudian/go/gorm` | GORM adapter (SQLite / Postgres / MySQL) |

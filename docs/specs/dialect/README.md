@@ -36,6 +36,13 @@ SQL 方言の切り出しと MySQL / Postgres 対応、および接続プール�
 | Go | `Options.Pool` / `ApplyPool`。GORM は `CreateCrud` 時に適用、libSQL は no-op |
 | JS | 呼び出し側（Prisma datasource / TypeORM DataSource 等）。型 `PoolOptions` は文書化用。SQLite 系は no-op |
 
+## 選択 API
+
+- JS Prisma: `createCrud(client, { dialect?: "sqlite" | "postgres" | "mysql" })`（既定 sqlite）
+- JS TypeORM: DataSource `options.type` から推論。`options.dialect` で上書き可
+- Go GORM: `Options.Driver`（`"sqlite"|"postgres"|"mysql"`）または `Options.Dialect`
+- **SQLite 固定のまま:** bun-sqlite / drizzle / JS libsql / Go libsql（`dialect` オプションは無視または未使用）
+
 ## 関連
 
 - テスト: [`../../tests/dialect/mysql-postgres.md`](../../tests/dialect/mysql-postgres.md)

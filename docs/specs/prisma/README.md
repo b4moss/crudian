@@ -10,6 +10,7 @@ bun-sqlite と同じ共有契約を、PrismaClient 相当の注入で提供す�
 ## 振る舞い
 
 - 入口: `createCrud(client, options?)`。接続生成は呼び出し側。生クライアントを公開
+- `options.pk` / `options.dialect`（既定 `"sqlite"`。Postgres / MySQL は明示）
 - メソッド面は共有契約どおり（async）
 - SQLite は常時テスト。Postgres / MySQL は `test:prisma:postgres` / `test:prisma:mysql`
 - 接続プール／lifetime は Prisma datasource 等・呼び出し側設定が本体

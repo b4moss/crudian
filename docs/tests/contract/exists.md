@@ -342,7 +342,7 @@ DB: 呼び出し側注入の `bun:sqlite` `Database`（テストでは `:memory:
 - Go README に「呼び出し側が接続を開き、必要なら Pool を設定」と書く
 - GORM は適用、libSQL は no-op と明記する
 - JS 側の同機能は #73 / [`../dialect/mysql-postgres.md`](../dialect/mysql-postgres.md) で扱うと明記する
-- `docs/README.md` / roadmap / go-module 設計メモに v0.9.0 / #105 が追記される
+- `docs/README.md` / roadmap / [`docs/specs/go/`](../../specs/go/) に #105 が追記される
 
 #### テスト: 異常系
 

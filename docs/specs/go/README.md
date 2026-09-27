@@ -64,7 +64,7 @@ page, err := crud.Search(ctx, "items", crudian.SearchQuery{
 })
 ```
 
-- 入口は `CreateCrud(db)`。内部で接続を生成しない
+- 入口は `CreateCrud(db, opts...)`。内部で接続を生成しない。`Options.PK` / `Driver` / `Dialect` / `Pool` を渡せる
 - 生の DB を公開（GORM: `*gorm.DB`、libSQL: `*sql.DB`）
 - メソッド: `Create` / `Read` / `Update` / `Delete` / `Search` / `List` / `Count` / `Exists` / `Upsert` / `Duplicate` / `BulkCreate` / `BulkUpdate` / `BulkDelete` / `BulkUpsert` / `Transaction`
 - 行は `map[string]any`（ジェネリクスは必要なら後続）。モデル／構造体マッピングはしない
@@ -75,11 +75,12 @@ page, err := crud.Search(ctx, "items", crudian.SearchQuery{
 
 | 項目 | 値 |
 |------|-----|
-| upsert / bulkUpsert conflict | 主キー列名 `id`（#72 の可変 PK は対象外） |
-| cursor | `id` 昇順。`NextCursor` は生の `id` |
+| upsert / bulkUpsert conflict | 設定中の PK 列（`Options.PK`、既定 `"id"`） |
+| cursor | PK 列昇順。`NextCursor` は生の PK 値 |
 | `SearchResult` | `Items`, `NextCursor`, `HasMore`, `Total` |
 | `Count` | where 全件数。`limit` / `cursor` / `columns` は受け取らない |
 | `Exists` | where 一致の有無（bool）。入力は `Count` と同型。件数は返さない |
+| `PK` | `Options.PK`（既定 `"id"`。空文字は既定扱い。複合 PK 非対応） |
 | `Pool` / `ApplyPool` | `*sql.DB` の MaxOpen / MaxIdle / ConnMaxLifetime / ConnMaxIdleTime。未指定フィールドは触らない。GORM 適用・libSQL no-op |
 | `columns` | `Read` / `Search` / `List` で投影可。省略は全列 |
 | 識別子 | 文字列必須。形式検証なし |
@@ -128,7 +129,7 @@ type Executor interface {
 | ランタイム | Go 1.26 + `testing` |
 | DB | 一時ファイル（推奨）または SQLite `:memory:`（ドライバが TX で安全な場合） |
 | 契約 | JS v0.1 / v0.2 / v0.5 / v0.6 相当を gorm・libsql で一式 |
-| 非対象 | リモート Turso Cloud E2E（可変 PK は別受け入れ） |
+| 非対象 | リモート Turso Cloud E2E、複合 PK |
 
 詳細: [`../../tests/go/module.md`](../../tests/go/module.md)
 
@@ -143,7 +144,6 @@ type Executor interface {
 
 ## 意図的な非対応（v0.7.0）
 
-- 可変 PK カラム名（#72）
 - ORM 風モデル、マイグレーション、全文検索
 - PHP
 - goroutine / channel による擬似 async API
@@ -159,7 +159,7 @@ type Executor interface {
 | 4 | libSQL | 公式 `libsql-client-go` 第一候補（local `file://` は companion sqlite 要） |
 | 5 | 実装順 | GORM/SQLite → libSQL（→ 後続で他 RDB） |
 | 6 | マイルストーン | v0.7.0（Go 公開 SemVer 初版も 0.7.0） |
-| 7 | PK / cursor | 当面 `id` 固定 |
+| 7 | PK / cursor | 既定 `id`。`Options.PK` で変更可（#72）。cursor は PK 昇順 |
 | 8 | 言語間バージョン | 独立可（npm 据え置きで Go のみリリース可） |
 | 9 | 配布 | module path + `packages/go/v*` タグ。レジストリ upload なし |
 
