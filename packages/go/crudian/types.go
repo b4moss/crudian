@@ -21,14 +21,30 @@ type ReadQuery struct {
 	Where   *WhereBuilder
 }
 
+// OrderByClause is one ORDER BY term.
+type OrderByClause struct {
+	Column    string
+	Direction string // "", "asc", or "desc" ("" = asc)
+}
+
+// AggregateSpec is one SELECT aggregate (requires GroupBy).
+type AggregateSpec struct {
+	Fn     string // count | sum | avg | min | max
+	Column string // optional for count (empty = COUNT(*))
+	As     string // result row key
+}
+
 // SearchQuery lists rows with offset or cursor pagination.
 type SearchQuery struct {
-	Columns []string
-	Where   *WhereBuilder
-	Limit   int
-	Cursor  any    // nil, number, or string
-	Paging  string // "", "offset", or "cursor" ("" = offset)
-	Offset  *int   // nil = unset (0 in offset mode); non-nil in cursor mode is rejected
+	Columns    []string
+	Where      *WhereBuilder
+	Limit      int
+	Cursor     any    // nil, number, or string
+	Paging     string // "", "offset", or "cursor" ("" = offset)
+	Offset     *int   // nil = unset (0 in offset mode); non-nil in cursor mode is rejected
+	OrderBy    []OrderByClause
+	GroupBy    []string
+	Aggregates []AggregateSpec
 }
 
 // CountQuery counts matching rows.

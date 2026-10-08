@@ -14,7 +14,12 @@ import {
 import type { Dialect } from "../dialect/types.js"
 import { sqliteDialect } from "../dialect/sqlite.js"
 import { createAsyncPkGuard, resolvePk } from "./pk.js"
-import { compileWhere, resolveWhere } from "./sql.js"
+import {
+  buildSearchSqlExtras,
+  compileWhere,
+  resolveWhere,
+  validateSearchExtras,
+} from "./sql.js"
 
 export type AsyncSqliteExecutor = {
   run(sql: string, args?: unknown[]): Promise<{ changes: number }>
@@ -234,9 +239,24 @@ export function createAsyncCrud<TDb>(
         throw new CrudianError("cursor must be a number, string, or null")
       }
 
+      validateSearchExtras(query, paging)
+      const extras = buildSearchSqlExtras(d, query, pk)
+
       const tbl = d.quoteIdent(table)
       const where = compileWhere(d, resolveWhere(query.where))
-      const total = await crud.count(table, { where: query.where })
+      const whereSql = where.sql ? ` WHERE ${where.sql}` : ""
+
+      let total: number
+      if (extras.hasGroupBy) {
+        const countSql =
+          `SELECT COUNT(*) AS ${d.quoteIdent("row_count")} FROM (` +
+          `SELECT 1 FROM ${tbl}${whereSql}${extras.groupBySql}` +
+          `) AS ${d.quoteIdent("_crudian_groups")}`
+        const countRow = await ex.get(countSql, where.args)
+        total = Number(countRow?.row_count ?? 0)
+      } else {
+        total = await crud.count(table, { where: query.where })
+      }
 
       if (paging === "offset") {
         const offset = query.offset ?? 0
@@ -245,11 +265,12 @@ export function createAsyncCrud<TDb>(
         }
         const args: unknown[] = [...where.args]
         let idx = where.nextIndex
-        const whereSql = where.sql ? ` WHERE ${where.sql}` : ""
         const sql =
-          `SELECT ${selectColumns(d, query.columns)} FROM ${tbl}` +
+          `SELECT ${extras.selectSql} FROM ${tbl}` +
           whereSql +
-          ` ORDER BY ${d.quoteIdent(pk)} ASC LIMIT ${d.placeholder(idx++)} OFFSET ${d.placeholder(idx++)}`
+          extras.groupBySql +
+          extras.orderBySql +
+          ` LIMIT ${d.placeholder(idx++)} OFFSET ${d.placeholder(idx++)}`
         args.push(limit, offset)
         const items = (await ex.all(sql, args)).map((r) => rowFromObject(r) as T)
         return {
@@ -269,11 +290,12 @@ export function createAsyncCrud<TDb>(
         parts.push(`${d.quoteIdent(pk)} > ${d.placeholder(idx++)}`)
         args.push(query.cursor)
       }
-      const whereSql = parts.length > 0 ? ` WHERE ${parts.join(" AND ")}` : ""
+      const cursorWhereSql = parts.length > 0 ? ` WHERE ${parts.join(" AND ")}` : ""
       const sql =
-        `SELECT ${selectColumns(d, query.columns)} FROM ${tbl}` +
-        whereSql +
-        ` ORDER BY ${d.quoteIdent(pk)} ASC LIMIT ${d.placeholder(idx++)}`
+        `SELECT ${extras.selectSql} FROM ${tbl}` +
+        cursorWhereSql +
+        extras.orderBySql +
+        ` LIMIT ${d.placeholder(idx++)}`
       args.push(limit + 1)
 
       const rows = (await ex.all(sql, args)).map((r) => rowFromObject(r) as T)

@@ -149,3 +149,129 @@ func selectColumns(d Dialect, columns []string) string {
 	}
 	return joinComma(parts)
 }
+
+type searchSQLExtras struct {
+	selectSQL  string
+	groupBySQL string
+	orderBySQL string
+	hasGroupBy bool
+}
+
+func validateSearchExtras(query SearchQuery, paging string) error {
+	if query.OrderBy != nil {
+		for _, clause := range query.OrderBy {
+			if _, err := AssertString(clause.Column, "orderBy.column"); err != nil {
+				return NewError("orderBy.column must be a non-empty string")
+			}
+			if clause.Direction != "" && clause.Direction != "asc" && clause.Direction != "desc" {
+				return NewError("orderBy.direction must be \"asc\" or \"desc\"")
+			}
+		}
+	}
+	if query.GroupBy != nil {
+		if len(query.GroupBy) == 0 {
+			return NewError("groupBy must not be empty")
+		}
+		for _, col := range query.GroupBy {
+			if _, err := AssertString(col, "groupBy column"); err != nil {
+				return NewError("groupBy column must be a non-empty string")
+			}
+		}
+	}
+	if query.Aggregates != nil {
+		if len(query.GroupBy) == 0 {
+			return NewError("aggregates require groupBy")
+		}
+		for _, agg := range query.Aggregates {
+			switch agg.Fn {
+			case "count", "sum", "avg", "min", "max":
+			default:
+				return NewError("aggregate.fn is invalid")
+			}
+			if agg.As == "" {
+				return NewError("aggregate.as must be a non-empty string")
+			}
+			if agg.Fn != "count" && agg.Column == "" {
+				return NewError("aggregate.column is required")
+			}
+		}
+	}
+	if paging == "cursor" && len(query.OrderBy) > 0 {
+		return NewError("cursor paging does not accept orderBy")
+	}
+	if paging == "cursor" && len(query.GroupBy) > 0 {
+		return NewError("cursor paging does not accept groupBy")
+	}
+	return nil
+}
+
+func aggregateSQL(d Dialect, agg AggregateSpec) string {
+	alias := d.QuoteIdent(agg.As)
+	fn := ""
+	switch agg.Fn {
+	case "count":
+		fn = "COUNT"
+	case "sum":
+		fn = "SUM"
+	case "avg":
+		fn = "AVG"
+	case "min":
+		fn = "MIN"
+	case "max":
+		fn = "MAX"
+	}
+	if agg.Fn == "count" && agg.Column == "" {
+		return fn + "(*) AS " + alias
+	}
+	return fn + "(" + d.QuoteIdent(agg.Column) + ") AS " + alias
+}
+
+func buildSearchSQLExtras(d Dialect, query SearchQuery, pk string) searchSQLExtras {
+	hasGroupBy := len(query.GroupBy) > 0
+	var selectSQL string
+	var groupBySQL string
+	if hasGroupBy {
+		cols := query.Columns
+		if len(cols) == 0 {
+			cols = query.GroupBy
+		}
+		parts := make([]string, 0, len(cols)+len(query.Aggregates))
+		for _, c := range cols {
+			parts = append(parts, d.QuoteIdent(c))
+		}
+		for _, agg := range query.Aggregates {
+			parts = append(parts, aggregateSQL(d, agg))
+		}
+		selectSQL = joinComma(parts)
+		gb := make([]string, len(query.GroupBy))
+		for i, c := range query.GroupBy {
+			gb[i] = d.QuoteIdent(c)
+		}
+		groupBySQL = " GROUP BY " + joinComma(gb)
+	} else {
+		selectSQL = selectColumns(d, query.Columns)
+	}
+
+	var orderBySQL string
+	if len(query.OrderBy) > 0 {
+		parts := make([]string, len(query.OrderBy))
+		for i, c := range query.OrderBy {
+			dir := "ASC"
+			if c.Direction == "desc" {
+				dir = "DESC"
+			}
+			parts[i] = d.QuoteIdent(c.Column) + " " + dir
+		}
+		orderBySQL = " ORDER BY " + joinComma(parts)
+	} else if hasGroupBy {
+		orderBySQL = " ORDER BY " + d.QuoteIdent(query.GroupBy[0]) + " ASC"
+	} else {
+		orderBySQL = " ORDER BY " + d.QuoteIdent(pk) + " ASC"
+	}
+	return searchSQLExtras{
+		selectSQL:  selectSQL,
+		groupBySQL: groupBySQL,
+		orderBySQL: orderBySQL,
+		hasGroupBy: hasGroupBy,
+	}
+}

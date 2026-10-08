@@ -38,6 +38,7 @@ RUN apt-get update \
         php-mbstring \
         php-curl \
         php-zip \
+        php-ffi \
     && rm -rf /var/lib/apt/lists/*
 
 # Node.js 24.x (NodeSource)
