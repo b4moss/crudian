@@ -583,6 +583,161 @@ describe("whereBuilder", () => {
   })
 })
 
+describe("orderBy", () => {
+  test("正常系: 未指定と空配列は PK ASC", () => {
+    const crud = crudFixture()
+    crud.create("items", { name: "b", score: 2 })
+    crud.create("items", { name: "a", score: 1 })
+    expect(crud.search("items").items.map((i) => i.id)).toEqual([1, 2])
+    expect(crud.search("items", { orderBy: [] }).items.map((i) => i.id)).toEqual([
+      1, 2,
+    ])
+  })
+
+  test("正常系: 単列 ASC / DESC と複数列", () => {
+    const crud = crudFixture()
+    crud.create("items", { name: "a", score: 2 })
+    crud.create("items", { name: "b", score: 1 })
+    crud.create("items", { name: "c", score: 2 })
+    const asc = crud.search("items", {
+      orderBy: [{ column: "score" }],
+      limit: 10,
+    })
+    expect(asc.items.map((i) => i.score)).toEqual([1, 2, 2])
+    const desc = crud.search("items", {
+      orderBy: [{ column: "score", direction: "desc" }],
+      limit: 10,
+    })
+    expect(desc.items.map((i) => i.score)).toEqual([2, 2, 1])
+    const multi = crud.search("items", {
+      orderBy: [
+        { column: "score", direction: "asc" },
+        { column: "id", direction: "asc" },
+      ],
+      limit: 10,
+    })
+    expect(multi.items.map((i) => i.id)).toEqual([2, 1, 3])
+  })
+
+  test("正常系: list は search と同じ並び", () => {
+    const crud = crudFixture()
+    crud.create("items", { name: "a", score: 2 })
+    crud.create("items", { name: "b", score: 1 })
+    const q = { orderBy: [{ column: "score", direction: "desc" as const }], limit: 10 }
+    expect(crud.list("items", q)).toEqual(crud.search("items", q))
+  })
+
+  test("正常系: cursor で orderBy 未指定は従来どおり", () => {
+    const crud = crudFixture()
+    crud.create("items", { name: "a", score: 1 })
+    crud.create("items", { name: "b", score: 2 })
+    const page = crud.search("items", { paging: "cursor", limit: 1 })
+    expect(page.items.map((i) => i.id)).toEqual([1])
+  })
+
+  test("異常系: 不正 direction / 非配列 orderBy", () => {
+    const crud = crudFixture()
+    expect(() =>
+      crud.search("items", {
+        orderBy: [{ column: "score", direction: "ASC" as never }],
+      }),
+    ).toThrow(CrudianError)
+    expect(() =>
+      crud.search("items", { orderBy: "score" as never }),
+    ).toThrow(CrudianError)
+  })
+
+  test("異常系: cursor + 非空 orderBy は拒否", () => {
+    const crud = crudFixture()
+    expect(() =>
+      crud.search("items", {
+        paging: "cursor",
+        orderBy: [{ column: "score" }],
+      }),
+    ).toThrow(CrudianError)
+  })
+})
+
+describe("groupBy", () => {
+  test("正常系: groupBy でグループが分かれ aggregates count が載る", () => {
+    const crud = crudFixture()
+    crud.create("items", { name: "a", score: 1 })
+    crud.create("items", { name: "a", score: 3 })
+    crud.create("items", { name: "b", score: 10 })
+    const page = crud.search("items", {
+      groupBy: ["name"],
+      columns: ["name"],
+      aggregates: [{ fn: "count", as: "n" }, { fn: "sum", column: "score", as: "total" }],
+      limit: 10,
+    })
+    expect(page.total).toBe(2)
+    expect(page.items).toHaveLength(2)
+    const byName = Object.fromEntries(
+      page.items.map((r) => [String(r.name), r]),
+    )
+    expect(Number(byName.a?.n)).toBe(2)
+    expect(Number(byName.a?.total)).toBe(4)
+    expect(Number(byName.b?.n)).toBe(1)
+    expect(Number(byName.b?.total)).toBe(10)
+  })
+
+  test("正常系: orderBy 未指定時は先頭グループ列 ASC / total はグループ件数", () => {
+    const crud = crudFixture()
+    for (const name of ["c", "a", "b", "a", "b", "b"]) {
+      crud.create("items", { name, score: 1 })
+    }
+    const page1 = crud.search("items", {
+      groupBy: ["name"],
+      columns: ["name"],
+      aggregates: [{ fn: "count", as: "n" }],
+      limit: 2,
+    })
+    expect(page1.total).toBe(3)
+    expect(page1.items.map((r) => r.name)).toEqual(["a", "b"])
+    expect(page1.hasMore).toBe(true)
+    const page2 = crud.search("items", {
+      groupBy: ["name"],
+      columns: ["name"],
+      aggregates: [{ fn: "count", as: "n" }],
+      limit: 2,
+      offset: 2,
+    })
+    expect(page2.total).toBe(3)
+    expect(page2.items.map((r) => r.name)).toEqual(["c"])
+    expect(page2.hasMore).toBe(false)
+  })
+
+  test("正常系: list === search / groupBy なしは行一覧", () => {
+    const crud = crudFixture()
+    crud.create("items", { name: "a", score: 1 })
+    crud.create("items", { name: "a", score: 2 })
+    const q = {
+      groupBy: ["name"],
+      columns: ["name"],
+      aggregates: [{ fn: "count" as const, as: "n" }],
+    }
+    expect(crud.list("items", q)).toEqual(crud.search("items", q))
+    expect(crud.search("items").items).toHaveLength(2)
+  })
+
+  test("異常系: 空 groupBy / cursor 併用 / aggregates のみ / 不正 fn", () => {
+    const crud = crudFixture()
+    expect(() => crud.search("items", { groupBy: [] })).toThrow(CrudianError)
+    expect(() =>
+      crud.search("items", { paging: "cursor", groupBy: ["name"] }),
+    ).toThrow(CrudianError)
+    expect(() =>
+      crud.search("items", { aggregates: [{ fn: "count", as: "n" }] }),
+    ).toThrow(CrudianError)
+    expect(() =>
+      crud.search("items", {
+        groupBy: ["name"],
+        aggregates: [{ fn: "median" as never, as: "n" }],
+      }),
+    ).toThrow(CrudianError)
+  })
+})
+
 describe("bunSqliteExportGuard", () => {
   test("正常系: Bun から createCrud を import できる", async () => {
     const mod = await import("./index.js")
