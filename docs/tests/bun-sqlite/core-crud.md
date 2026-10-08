@@ -1,9 +1,9 @@
 # テスト仕様 v0.1.0
 
 対象マイルストーン: v0.1.0（Core CRUD Trait / bun:sqlite）  
-仕様: [`../main.md`](../main.md)  
-設計: [`../plans/bun-sqlite-adapter.md`](../plans/bun-sqlite-adapter.md)  
-ロードマップ: [`../plans/roadmap.md`](../plans/roadmap.md)  
+仕様: [`../../README.md`](../../README.md)  
+設計: [`../../specs/bun-sqlite/`](../../specs/bun-sqlite/)  
+ロードマップ: [`../../roadmap.md`](../../roadmap.md)  
 書き方: charter `tdd.md`（氷山パターン）
 
 ## 共通前提

@@ -2,9 +2,9 @@
 
 対象マイルストーン: v0.8.0（offset pagination / `paging` 切替、可変 PK）  
 関連 Issue: [#90](https://github.com/b4moss/crudian/issues/90) / [#72](https://github.com/b4moss/crudian/issues/72)  
-仕様: [`../main.md`](../main.md)  
-ロードマップ: [`../plans/roadmap.md`](../plans/roadmap.md)  
-前提: [`./v0.1.0.md`](./v0.1.0.md) / [`./v0.2.0.md`](./v0.2.0.md) / [`./v0.5.0.md`](./v0.5.0.md) / [`./v0.6.0.md`](./v0.6.0.md) / [`./v0.7.0.md`](./v0.7.0.md)  
+仕様: [`../../README.md`](../../README.md)  
+ロードマップ: [`../../roadmap.md`](../../roadmap.md)  
+前提: [`../bun-sqlite/core-crud.md`](../bun-sqlite/core-crud.md) / [`../bun-sqlite/extended-writes.md`](../bun-sqlite/extended-writes.md) / [`./count-total.md`](./count-total.md) / [`../libsql/adapter.md`](../libsql/adapter.md) / [`../go/module.md`](../go/module.md)  
 書き方: charter `tdd.md`（氷山パターン）
 
 本ファイルは次の受け入れを扱う。

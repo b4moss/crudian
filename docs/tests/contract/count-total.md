@@ -2,14 +2,14 @@
 
 対象マイルストーン: v0.5.0（`count` / `SearchResult.total`）  
 関連 Issue: [#47](https://github.com/b4moss/crudian/issues/47)  
-仕様: [`../main.md`](../main.md)  
-設計: [`../plans/bun-sqlite-adapter.md`](../plans/bun-sqlite-adapter.md)  
-ロードマップ: [`../plans/roadmap.md`](../plans/roadmap.md)  
-前提: [`./v0.1.0.md`](./v0.1.0.md) / [`./v0.2.0.md`](./v0.2.0.md) / [`./v0.3.0.md`](./v0.3.0.md)  
+仕様: [`../../README.md`](../../README.md)  
+設計: [`../../specs/bun-sqlite/`](../../specs/bun-sqlite/)  
+ロードマップ: [`../../roadmap.md`](../../roadmap.md)  
+前提: [`../bun-sqlite/core-crud.md`](../bun-sqlite/core-crud.md) / [`../bun-sqlite/extended-writes.md`](../bun-sqlite/extended-writes.md) / [`../drizzle/adapter.md`](../drizzle/adapter.md)  
 書き方: charter `tdd.md`（氷山パターン）
 
 本ファイルは **#47（`count` と `search`/`list` の `total`）** の受け入れのみを扱う。  
-libSQL アダプタ（#42）は [`./v0.6.0.md`](./v0.6.0.md) を正とする。
+libSQL アダプタ（#42）は [`../libsql/adapter.md`](../libsql/adapter.md) を正とする。
 
 ## 共通前提
 

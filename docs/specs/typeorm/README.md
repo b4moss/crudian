@@ -1,10 +1,8 @@
-# TypeORM Adapter — 設計と進め方
+# TypeORM アダプタ仕様
 
-`@b4moss/crudian/typeorm` を、既存の async CRUD 契約で追加する方針のメモ。  
-仕様の正は [`docs/main.md`](../main.md)。マイルストーン割当は [`roadmap.md`](./roadmap.md)。  
-関連 Issue: [#43](https://github.com/b4moss/crudian/issues/43)（マイルストーン **v0.11.0**）  
-前提: [#73](https://github.com/b4moss/crudian/issues/73)（Dialect / MySQL・Postgres）が **MySQL まで完了**していること（受け入れ: [`docs/tests/v0.10.0.md`](../tests/v0.10.0.md)、ゲート達成済み）。  
-本マイルストーンの受け入れ: [`docs/tests/v0.11.0.md`](../tests/v0.11.0.md)。
+`@b4moss/crudian/typeorm` の現行仕様正本（async CRUD 契約）。  
+契約の正は [`../contract/`](../contract/)。Dialect は [`../dialect/`](../dialect/)。pillar は [`../../README.md`](../../README.md)。  
+関連 Issue: [#43](https://github.com/b4moss/crudian/issues/43)（実装済み）。受け入れ: [`../../tests/typeorm/adapter.md`](../../tests/typeorm/adapter.md)。
 
 ## 製品意図
 
@@ -60,7 +58,7 @@ await crud.create("items", { name: "alpha", score: 1 })
 await crud.search("items", { where: where().eq("name", "alpha") })
 ```
 
-- 入口は `createCrud(dataSource)`。接続生成・`initialize` は呼び出し側
+- 入口は `createCrud(dataSource, options?)`。接続生成・`initialize` は呼び出し側。`options.pk` / `options.dialect`（未指定時は `dataSource.options.type` から推論）
 - 生の `DataSource` を `crud.db` で公開（JOIN・QueryBuilder 直叩き等の非 CRUD 用）
 - メソッドは既存 async 面と同等（`create` / `read` / `update` / `delete` / `search` / `list` / `count` / `upsert` / `duplicate` / `bulk*` / `transaction`）
 - 第一引数の表名は **文字列**。Entity クラスを渡す API は初版の必須ではない
@@ -83,7 +81,7 @@ await crud.search("items", { where: where().eq("name", "alpha") })
 | ランタイム | **Node.js 24+** と **Bun** の両方で必須 |
 | DB（初版必須） | SQLite + Postgres + MySQL |
 | 契約 | 既存 v0.1 / v0.2 / v0.5 / v0.8 相当を typeorm で一式 |
-| 受け入れ | [`docs/tests/v0.11.0.md`](../tests/v0.11.0.md) |
+| 受け入れ | [`../../tests/typeorm/adapter.md`](../../tests/typeorm/adapter.md) |
 | 非対象（初版） | リモート Cloud 専用 E2E、PHP、ORM の全機能網羅 |
 
 ## 目標 / 非目標（Q9）
@@ -111,7 +109,6 @@ await crud.search("items", { where: where().eq("name", "alpha") })
 - Entity クラスを `create` / `search` の第一引数にする第一級 API
 - TypeORM の関係グラフを横断する CRUD（単表契約のまま）
 - ライブラリ内部での DataSource 自動生成・env からの秘密情報読み込み
-- `#73` 未完了のうちの Postgres / MySQL 先行実装
 
 ## 決定事項（#43 Q&A）
 
@@ -160,18 +157,18 @@ Node.js / Bun 向けに TypeORM アダプタ `@b4moss/crudian/typeorm` を追加
 
 ### 着手条件
 
-- [x] #73 が MySQL まで完了していること（[`docs/tests/v0.10.0.md`](../tests/v0.10.0.md)）
+- [x] #73 が MySQL まで完了していること（[`../../tests/dialect/mysql-postgres.md`](../../tests/dialect/mysql-postgres.md)）
 
-受け入れの正: [`docs/tests/v0.11.0.md`](../tests/v0.11.0.md)。
+受け入れの正: [`../../tests/typeorm/adapter.md`](../../tests/typeorm/adapter.md)。
 
 ## スコープ（このイシュー）
 
-- [ ] `packages/js/src/typeorm` + `exports["./typeorm"]` + optional peer `typeorm`
-- [ ] `createCrud(dataSource)` と既存 async CRUD 面の実装
-- [ ] SQLite / Postgres / MySQL それぞれで契約テストが通ること
-- [ ] Node 24+ と Bun の両方でテストが通ること
-- [ ] migrations / relations / subscribers 利用下での単表 CRUD の振る舞いをドキュメント化
-- [ ] README / 設計メモ（`docs/plans/typeorm-adapter.md`）の更新
+- [x] `packages/js/src/typeorm` + `exports["./typeorm"]` + optional peer `typeorm`
+- [x] `createCrud(dataSource, options?)` と既存 async CRUD 面の実装
+- [x] SQLite / Postgres / MySQL それぞれで契約テストが通ること
+- [x] Node 24+ と Bun の両方でテストが通ること
+- [x] migrations / relations / subscribers 利用下での単表 CRUD の振る舞いをドキュメント化
+- [x] README / 仕様（`docs/specs/typeorm/`）の更新
 
 ## 非目標
 
@@ -185,13 +182,19 @@ Node.js / Bun 向けに TypeORM アダプタ `@b4moss/crudian/typeorm` を追加
 
 - #73 — Dialect / MySQL・Postgres（**前提・着手ゲート**）
 - #105 — プール／lifetime（JS は #73 連動。TypeORM は DataSource オプション側）
-- 設計メモ: `docs/plans/typeorm-adapter.md`
+- 仕様: `docs/specs/typeorm/`
 
 ## Acceptance
 
-- [ ] `@b4moss/crudian/typeorm` から `createCrud(DataSource)` が使える
-- [ ] 既存契約（CRUD / search / count / bulk* / transaction 等）が TypeORM 経路で通る
-- [ ] SQLite + Postgres + MySQL のテストが緑
-- [ ] Node 24+ と Bun の両方でテストが緑
-- [ ] ドキュメントに注入面・表名第一級・非目標が明記されている
+- [x] `@b4moss/crudian/typeorm` から `createCrud(DataSource)` が使える
+- [x] 既存契約（CRUD / search / count / bulk* / transaction 等）が TypeORM 経路で通る
+- [x] SQLite + Postgres + MySQL のテストが緑
+- [x] Node 24+ と Bun の両方でテストが緑
+- [x] ドキュメントに注入面・表名第一級・非目標が明記されている
 ```
+
+## 関連
+
+- テスト: [`../../tests/typeorm/adapter.md`](../../tests/typeorm/adapter.md)
+- Dialect: [`../dialect/`](../dialect/)
+- 契約: [`../contract/`](../contract/)

@@ -1,7 +1,7 @@
 # Roadmap — bun:sqlite CRUD Trait
 
 `@b4moss/crudian/bun-sqlite` を参照実装として、機能をマイルストーンに割り当てる。  
-仕様の正は [`docs/main.md`](main.md)。設計詳細は [`bun-sqlite-adapter.md`](plans/bun-sqlite-adapter.md)。libSQL は [`libsql-adapter.md`](plans/libsql-adapter.md)。Go は [`go-module.md`](plans/go-module.md)。TypeORM は [`typeorm-adapter.md`](plans/typeorm-adapter.md)。
+pillar は [`docs/README.md`](README.md)。現行仕様は [`specs/`](specs/)。例: [`bun-sqlite`](specs/bun-sqlite/)、[`libsql`](specs/libsql/)、[`go`](specs/go/)、[`typeorm`](specs/typeorm/)。未実装は [`plans/`](plans/)。
 
 ## 方針
 
@@ -9,7 +9,7 @@
 - **機能単位で実装とインメモリ DB テスト（Bun + `bun:test`）を同時に閉じる**
 - 旧定義の「v0.1 = 全メソッド実装 / v0.2 = テストのみ」は改め、下表の分割に更新する
 - v0.3.0 以降で drizzle / prisma / libsql（および将来 PHP / Go）へ同じ語彙を展開する
-- **バージョンは言語（配布物）単位**（JS npm と Go module は独立）。同一言語内のアダプタは単一版に同梱。言語間で版が飛ぶのは許容。詳細は `docs/main.md` の「バージョン方針」
+- **バージョンは言語（配布物）単位**（JS npm と Go module は独立）。同一言語内のアダプタは単一版に同梱。言語間で版が飛ぶのは許容。詳細は `docs/README.md` の「バージョン方針」
 
 ## マイルストーン一覧
 
@@ -110,7 +110,7 @@ PHP / Go パッケージは本マイルストーンの必須範囲外（契約�
 | `count` | `CountQuery`（`{ where? }`）→ `number` | where コンパイルは `search` と共用 |
 | `SearchResult.total` | where 全件数を常時付与 | limit / cursor 非依存。オプトインなし |
 | 対象 | bun-sqlite / drizzle / prisma | 共有 sync / async 層で実装 |
-| テスト | [`docs/tests/v0.5.0.md`](../tests/v0.5.0.md) | |
+| テスト | [`docs/tests/contract/count-total.md`](tests/contract/count-total.md) | |
 
 ---
 
@@ -123,8 +123,8 @@ PHP / Go パッケージは本マイルストーンの必須範囲外（契約�
 | `@b4moss/crudian/libsql` | bun-sqlite / prisma と同等 API（async） | peer: `@libsql/client` |
 | 入口 | `createCrud(client)` | 呼び出し側が作った Client を注入。生 client を `crud.db` で公開 |
 | 実装方針 | `createAsyncSqliteCrud` に薄い executor を渡す | prisma アダプタと同型 |
-| テスト | 一時ファイル DB + `node:test` | [`docs/tests/v0.6.0.md`](../tests/v0.6.0.md)。`:memory:` は TX と相性が悪いためテストではファイルを使う |
-| 設計 | [`libsql-adapter.md`](plans/libsql-adapter.md) | サブパスは商業名 Turso ではなく libSQL |
+| テスト | 一時ファイル DB + `node:test` | [`tests/libsql/adapter.md`](tests/libsql/adapter.md)。`:memory:` は TX と相性が悪いためテストではファイルを使う |
+| 設計 | [`specs/libsql/`](specs/libsql/) | サブパスは商業名 Turso ではなく libSQL |
 
 **対象外:** `@tursodatabase/serverless`、リモート Cloud 前提の E2E、TypeORM（#43）
 
@@ -149,9 +149,9 @@ JS 契約を Go へ移植する（#48）。**Go の公開初版は `0.7.0`**（`
 | `go/gorm` | GORM | 生 `*gorm.DB` 注入。**v0.7.0 は SQLite のみ** |
 | `go/libsql` | 公式 libSQL `database/sql` | 第一候補: `libsql-client-go`（SQLite 互換） |
 | 配布 | Go module path + git タグ | タグ **`packages/go/v0.7.0`**。npm 風レジストリへの upload はなし |
-| テスト | [`docs/tests/v0.7.0.md`](../tests/v0.7.0.md) | Go 1.26 + `testing` |
-| CI/CD | [`.github/CI.md`](../../.github/CI.md) | 変更時のみ `packages/go` を lint/test。CD は当該タグ時のみ |
-| 設計 | [`go-module.md`](plans/go-module.md) | |
+| テスト | [`tests/go/module.md`](tests/go/module.md) | Go 1.26 + `testing` |
+| CI/CD | [`.github/CI.md`](../.github/CI.md) | 変更時のみ `packages/go` を lint/test。CD は当該タグ時のみ |
+| 設計 | [`specs/go/`](specs/go/) | |
 
 **対象外（v0.7.0）:** GORM の MySQL / PostgreSQL（**将来対応**）、可変 PK（#72）、PHP、製品 E2E の CI 実行
 
@@ -178,7 +178,7 @@ JS 契約を Go へ移植する（#48）。**Go の公開初版は `0.7.0`**（`
 | Postgres | 少なくとも 1 ORM（**Prisma**）+ Go GORM で同等契約 | Drizzle PG subpath は本版対象外 |
 | MySQL | Dialect + RETURNING 代替を含む同等テスト | **#43 着手ゲート** |
 | JS プール | #105 相当を MySQL / Postgres 経路で文書化（Prisma は呼び出し側設定が本体） | SQLite / libSQL は no-op 可 |
-| テスト | [`docs/tests/v0.10.0.md`](../tests/v0.10.0.md) | |
+| テスト | [`tests/dialect/mysql-postgres.md`](tests/dialect/mysql-postgres.md) | |
 | 設計 | #73 Issue 本文 | TypeORM は v0.11.0（#43） |
 
 **対象外（v0.10.0）:** TypeORM アダプタ本体（→ #43）、PHP、契約語彙の破壊的変更、Drizzle の Postgres/MySQL subpath
@@ -194,15 +194,15 @@ JS 契約を Go へ移植する（#48）。**Go の公開初版は `0.7.0`**（`
 | ランタイム | Node 24+ **と** Bun | 両方で `test:typeorm` |
 | 実装 | QueryBuilder / Repository を積極利用 | |
 | codecov | カバレッジ 75%（#96） | 計測修正 → 不足分テスト |
-| 設計 | [`typeorm-adapter.md`](plans/typeorm-adapter.md) | |
-| テスト | [`docs/tests/v0.11.0.md`](../tests/v0.11.0.md) | |
+| 設計 | [`specs/typeorm/`](specs/typeorm/) | |
+| テスト | [`tests/typeorm/adapter.md`](tests/typeorm/adapter.md) | |
 
 **対象外（v0.11.0）:** Entity 第一級 API、関係グラフ横断 CRUD、Cloud 専用 E2E、PHP
 
 ### v0.11.0 推奨実装順
 
 1. #73 MySQL 完了を確認（済み）
-2. 仕様・テスト仕様の固定（[`docs/tests/v0.11.0.md`](../tests/v0.11.0.md)）
+2. 仕様・テスト仕様の固定（[`tests/typeorm/adapter.md`](tests/typeorm/adapter.md)）
 3. #96 計測修正（Go `-coverpkg` / JS adapter coverage upload）
 4. `packages/js/src/typeorm` + exports / peer / scripts
 5. SQLite → Postgres → MySQL の順で契約テスト
@@ -256,7 +256,7 @@ JS 契約を Go へ移植する（#48）。**Go の公開初版は `0.7.0`**（`
 | **v0.9.0** | #106 `exists` / `Exists`（boolean 糖衣） |
 | | #105 DB 接続プール／lifetime（Go/GORM 先行。JS は #73 / v0.10.0） |
 | **v0.4.0** | #44 Docker / Dev Containers（全ランタイム 1 コンテナ + 実 DB E2E） |
-| **v0.10.0** | #73 Dialect / MySQL・Postgres（JS プール含む。テスト: [`docs/tests/v0.10.0.md`](../tests/v0.10.0.md)） |
-| **v0.11.0** | #43 TypeORM アダプタ / #96 codecov 75%（テスト: [`docs/tests/v0.11.0.md`](../tests/v0.11.0.md)） |
+| **v0.10.0** | #73 Dialect / MySQL・Postgres（JS プール含む。テスト: [`tests/dialect/mysql-postgres.md`](tests/dialect/mysql-postgres.md)） |
+| **v0.11.0** | #43 TypeORM アダプタ / #96 codecov 75%（テスト: [`tests/typeorm/adapter.md`](tests/typeorm/adapter.md)） |
 
 クローズ済み（方針変更により機能 Issue へ内包）: #10 / #11
