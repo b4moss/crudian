@@ -64,7 +64,8 @@ Expected for a tree whose `package.json` version is **already on npm**: decide s
 - **Docs-only / other-only PRs:** package and gate jobs are skipped; gate job `CI result` still succeeds.
 - **Lint:** JS = `tsc --noEmit`; Go = `gofmt -l` + `go vet`; PHP = `phpstan`.
 - **Tests:** JS bun-sqlite (+ build + coverage upload), JS drizzle/prisma/libsql (+ `c8` coverage upload), Go `go test -coverpkg=./... ./...` (+ coverage upload), PHP `composer test` (PHPUnit; PDO SQLite required).
-- **Codecov:** project target **75%**（[`codecov.yml`](../codecov.yml)、#96）。status は informational（CI は落とさない）。Go は `-coverpkg=./...` でアダプタ経由のコアを計上。JS は bun-sqlite と node-adapters の双方を upload。
+- **Codecov:** project target **90%**（[`codecov.yml`](../codecov.yml)、#128）。status は informational（CI は落とさない）。Go は `-coverpkg=./...` でアダプタ経由のコアを計上。JS は bun-sqlite / node-adapters / typeorm を upload。
+- **Scorecard / permissions:** workflow の `uses:` は commit SHA pin。top-level は read 系のみ、write は job-level（#129）。
 - **Ancestor skip (not GHA cache):** each package job runs `.github/scripts/ci-skip-if-ancestor-passed.sh` with:
   - exact check-run name (e.g. `test packages/go (gorm / libsql)`, `test packages/php (pdo / libsql)`)
   - identity paths: package dir + `ci.yml` + the skip script  

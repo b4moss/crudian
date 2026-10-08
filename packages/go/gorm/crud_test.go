@@ -598,3 +598,22 @@ func fmtID(v any) int64 {
 		return -1
 	}
 }
+
+func TestCreateCrudOptions(t *testing.T) {
+	db := openDB(t)
+	maxOpen := 5
+	crud, err := gormcrud.CreateCrud(db, crudian.Options{
+		Driver: "sqlite",
+		Pool:   &crudian.PoolOptions{MaxOpenConns: &maxOpen},
+	})
+	if err != nil || crud == nil {
+		t.Fatalf("pool+driver: %v", err)
+	}
+	crud, err = gormcrud.CreateCrud(db, crudian.Options{Dialect: crudian.PostgresDialect{}})
+	if err != nil || crud == nil {
+		t.Fatalf("dialect: %v", err)
+	}
+	if _, err := gormcrud.CreateCrud(db, crudian.Options{Driver: "nope"}); err == nil {
+		t.Fatal("bad driver")
+	}
+}
