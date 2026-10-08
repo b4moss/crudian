@@ -62,7 +62,8 @@
     "test:typeorm:coverage": "c8 --reporter=lcov --reporter=text-summary --report-dir=coverage/typeorm --exclude='**/*.test.ts' --exclude='dist/**' tsx --test src/typeorm/crud.test.ts src/typeorm/pk.test.ts",
     "test:typeorm:postgres": "DATABASE_URL_POSTGRES=\"${DATABASE_URL_POSTGRES:-postgresql://crudian:crudian@127.0.0.1:5432/crudian?sslmode=disable}\" tsx --test src/typeorm/postgres.test.ts",
     "test:typeorm:mysql": "DATABASE_URL_MYSQL=\"${DATABASE_URL_MYSQL:-mysql://crudian:crudian@127.0.0.1:3306/crudian}\" tsx --test src/typeorm/mysql.test.ts"
-  },  "engines": {
+  },
+  "engines": {
     "node": ">=24",
     "bun": ">=1.0.0"
   },
@@ -124,5 +125,8 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "overrides": {
+    "deepmerge-ts": ">=8.0.0"
   }
 }
