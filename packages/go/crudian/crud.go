@@ -301,13 +301,37 @@ func (c *Crud) Search(ctx context.Context, table string, query SearchQuery) (Sea
 		}
 	}
 
+	if err := validateSearchExtras(query, paging); err != nil {
+		return SearchResult{}, err
+	}
+	extras := buildSearchSQLExtras(c.d, query, c.pk)
+
 	where, err := compileWhere(c.d, resolveWhere(query.Where), 1)
 	if err != nil {
 		return SearchResult{}, err
 	}
-	total, err := c.Count(ctx, table, CountQuery{Where: query.Where})
-	if err != nil {
-		return SearchResult{}, err
+	whereSQL := ""
+	if where.SQL != "" {
+		whereSQL = " WHERE " + where.SQL
+	}
+
+	var total int64
+	if extras.hasGroupBy {
+		countSQL := "SELECT COUNT(*) AS " + c.d.QuoteIdent("row_count") + " FROM (" +
+			"SELECT 1 FROM " + c.d.QuoteIdent(tbl) + whereSQL + extras.groupBySQL +
+			") AS " + c.d.QuoteIdent("_crudian_groups")
+		countRow, err := c.ex.Get(ctx, countSQL, where.Args...)
+		if err != nil {
+			return SearchResult{}, err
+		}
+		if countRow != nil {
+			total = toInt64(countRow["row_count"])
+		}
+	} else {
+		total, err = c.Count(ctx, table, CountQuery{Where: query.Where})
+		if err != nil {
+			return SearchResult{}, err
+		}
 	}
 
 	if paging == "offset" {
@@ -319,13 +343,10 @@ func (c *Crud) Search(ctx context.Context, table string, query SearchQuery) (Sea
 			return SearchResult{}, NewError("offset must be a non-negative number")
 		}
 		args := append([]any{}, where.Args...)
-		whereSQL := ""
-		if where.SQL != "" {
-			whereSQL = " WHERE " + where.SQL
-		}
 		idx := where.NextIndex
-		sql := "SELECT " + selectColumns(c.d, query.Columns) + " FROM " + c.d.QuoteIdent(tbl) +
-			whereSQL + " ORDER BY " + c.d.QuoteIdent(c.pk) + " ASC LIMIT " + c.d.Placeholder(idx) +
+		sql := "SELECT " + extras.selectSQL + " FROM " + c.d.QuoteIdent(tbl) +
+			whereSQL + extras.groupBySQL + extras.orderBySQL +
+			" LIMIT " + c.d.Placeholder(idx) +
 			" OFFSET " + c.d.Placeholder(idx+1)
 		args = append(args, limit, offset)
 		rows, err := c.ex.All(ctx, sql, args...)
@@ -352,15 +373,15 @@ func (c *Crud) Search(ctx context.Context, table string, query SearchQuery) (Sea
 		args = append(args, query.Cursor)
 		idx++
 	}
-	whereSQL := ""
+	cursorWhereSQL := ""
 	if len(parts) > 0 {
-		whereSQL = " WHERE " + parts[0]
+		cursorWhereSQL = " WHERE " + parts[0]
 		for i := 1; i < len(parts); i++ {
-			whereSQL += " AND " + parts[i]
+			cursorWhereSQL += " AND " + parts[i]
 		}
 	}
-	sql := "SELECT " + selectColumns(c.d, query.Columns) + " FROM " + c.d.QuoteIdent(tbl) +
-		whereSQL + " ORDER BY " + c.d.QuoteIdent(c.pk) + " ASC LIMIT " + c.d.Placeholder(idx)
+	sql := "SELECT " + extras.selectSQL + " FROM " + c.d.QuoteIdent(tbl) +
+		cursorWhereSQL + extras.orderBySQL + " LIMIT " + c.d.Placeholder(idx)
 	args = append(args, limit+1)
 	rows, err := c.ex.All(ctx, sql, args...)
 	if err != nil {

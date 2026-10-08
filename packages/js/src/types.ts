@@ -27,6 +27,23 @@ export type ReadQuery = {
   where?: WhereInput
 }
 
+export type OrderByDirection = "asc" | "desc"
+
+export type OrderByClause = {
+  column: string
+  direction?: OrderByDirection
+}
+
+export type AggregateFn = "count" | "sum" | "avg" | "min" | "max"
+
+export type AggregateSpec = {
+  fn: AggregateFn
+  /** Required except for `count` (omit = `COUNT(*)`). */
+  column?: string
+  /** Result row key. */
+  as: string
+}
+
 export type SearchQuery = {
   columns?: string[]
   where?: WhereInput
@@ -37,6 +54,12 @@ export type SearchQuery = {
   offset?: number
   /** Raw PK cursor (keyset; default column `id`) for `paging: "cursor"`. */
   cursor?: number | string | null
+  /** Sort clauses. Omit / empty = PK ASC (or first groupBy ASC when grouping). */
+  orderBy?: OrderByClause[]
+  /** SQL GROUP BY columns. Empty array is rejected. */
+  groupBy?: string[]
+  /** Aggregate expressions (require `groupBy`). */
+  aggregates?: AggregateSpec[]
 }
 
 export type CountQuery = {
