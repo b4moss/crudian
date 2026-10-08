@@ -17,6 +17,7 @@ pillar: [`../README.md`](../README.md)
 | [`typeorm/`](./typeorm/) | TypeORM アダプタ |
 | [`go/`](./go/) | Go module（gorm / libsql） |
 | [`dialect/`](./dialect/) | Dialect / MySQL・Postgres / JS プール |
+| [`v0.12.0.md`](./v0.12.0.md) | v0.12.0 受け入れ（PHP #127 / `orderBy` #139 / `groupBy` #136） |
 
 ----
 

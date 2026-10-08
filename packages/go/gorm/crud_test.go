@@ -2,6 +2,7 @@ package gorm_test
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"testing"
 	"time"
@@ -457,5 +458,162 @@ func TestPoolOptions(t *testing.T) {
 	}
 	if got := sqlDB2.Stats().MaxOpenConnections; got != maxOpen {
 		t.Fatalf("PK+Pool MaxOpen: got %d want %d", got, maxOpen)
+	}
+}
+
+func TestOrderBy(t *testing.T) {
+	ctx := context.Background()
+	crud := mustCreateCrud(t, openDB(t))
+	for _, row := range []crudian.Row{
+		{"name": "a", "score": 2},
+		{"name": "b", "score": 1},
+		{"name": "c", "score": 2},
+	} {
+		if _, err := crud.Create(ctx, "items", row); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	def, err := crud.Search(ctx, "items", crudian.SearchQuery{Limit: 10})
+	if err != nil || len(def.Items) != 3 {
+		t.Fatalf("default: %+v %v", def, err)
+	}
+	if def.Items[0]["id"] != int64(1) && def.Items[0]["id"] != 1 {
+		// sqlite drivers may return int64
+		if fmtID(def.Items[0]["id"]) != 1 {
+			t.Fatalf("default pk asc: %+v", def.Items)
+		}
+	}
+
+	asc, err := crud.Search(ctx, "items", crudian.SearchQuery{
+		Limit:   10,
+		OrderBy: []crudian.OrderByClause{{Column: "score"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fmtID(asc.Items[0]["score"]) != 1 {
+		t.Fatalf("asc score: %+v", asc.Items)
+	}
+
+	desc, err := crud.Search(ctx, "items", crudian.SearchQuery{
+		Limit:   10,
+		OrderBy: []crudian.OrderByClause{{Column: "score", Direction: "desc"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fmtID(desc.Items[0]["score"]) != 2 {
+		t.Fatalf("desc score: %+v", desc.Items)
+	}
+
+	list, err := crud.List(ctx, "items", crudian.SearchQuery{
+		Limit:   10,
+		OrderBy: []crudian.OrderByClause{{Column: "score", Direction: "desc"}},
+	})
+	if err != nil || list.Total != desc.Total || len(list.Items) != len(desc.Items) {
+		t.Fatalf("list: %+v vs %+v %v", list, desc, err)
+	}
+
+	if _, err := crud.Search(ctx, "items", crudian.SearchQuery{
+		Paging:  "cursor",
+		OrderBy: []crudian.OrderByClause{{Column: "score"}},
+		Limit:   2,
+	}); err == nil {
+		t.Fatal("cursor+orderBy should fail")
+	}
+	if _, err := crud.Search(ctx, "items", crudian.SearchQuery{
+		OrderBy: []crudian.OrderByClause{{Column: "score", Direction: "ASC"}},
+		Limit:   2,
+	}); err == nil {
+		t.Fatal("bad direction should fail")
+	}
+}
+
+func TestGroupBy(t *testing.T) {
+	ctx := context.Background()
+	crud := mustCreateCrud(t, openDB(t))
+	for _, row := range []crudian.Row{
+		{"name": "a", "score": 1},
+		{"name": "a", "score": 3},
+		{"name": "b", "score": 10},
+	} {
+		if _, err := crud.Create(ctx, "items", row); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	page, err := crud.Search(ctx, "items", crudian.SearchQuery{
+		GroupBy:    []string{"name"},
+		Columns:    []string{"name"},
+		Aggregates: []crudian.AggregateSpec{{Fn: "count", As: "n"}, {Fn: "sum", Column: "score", As: "total"}},
+		Limit:      10,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if page.Total != 2 || len(page.Items) != 2 {
+		t.Fatalf("groups: %+v", page)
+	}
+	by := map[string]crudian.Row{}
+	for _, r := range page.Items {
+		by[fmt.Sprint(r["name"])] = r
+	}
+	if fmtID(by["a"]["n"]) != 2 || fmtID(by["a"]["total"]) != 4 {
+		t.Fatalf("a agg: %+v", by["a"])
+	}
+	if fmtID(by["b"]["n"]) != 1 || fmtID(by["b"]["total"]) != 10 {
+		t.Fatalf("b agg: %+v", by["b"])
+	}
+
+	if _, err := crud.Search(ctx, "items", crudian.SearchQuery{GroupBy: []string{}, Limit: 10}); err == nil {
+		t.Fatal("empty groupBy")
+	}
+	if _, err := crud.Search(ctx, "items", crudian.SearchQuery{
+		Paging:  "cursor",
+		GroupBy: []string{"name"},
+		Limit:   2,
+	}); err == nil {
+		t.Fatal("cursor+groupBy")
+	}
+	if _, err := crud.Search(ctx, "items", crudian.SearchQuery{
+		Aggregates: []crudian.AggregateSpec{{Fn: "count", As: "n"}},
+		Limit:      10,
+	}); err == nil {
+		t.Fatal("aggregates without groupBy")
+	}
+}
+
+func fmtID(v any) int64 {
+	switch n := v.(type) {
+	case int64:
+		return n
+	case int:
+		return int64(n)
+	case float64:
+		return int64(n)
+	case int32:
+		return int64(n)
+	default:
+		return -1
+	}
+}
+
+func TestCreateCrudOptions(t *testing.T) {
+	db := openDB(t)
+	maxOpen := 5
+	crud, err := gormcrud.CreateCrud(db, crudian.Options{
+		Driver: "sqlite",
+		Pool:   &crudian.PoolOptions{MaxOpenConns: &maxOpen},
+	})
+	if err != nil || crud == nil {
+		t.Fatalf("pool+driver: %v", err)
+	}
+	crud, err = gormcrud.CreateCrud(db, crudian.Options{Dialect: crudian.PostgresDialect{}})
+	if err != nil || crud == nil {
+		t.Fatalf("dialect: %v", err)
+	}
+	if _, err := gormcrud.CreateCrud(db, crudian.Options{Driver: "nope"}); err == nil {
+		t.Fatal("bad driver")
 	}
 }
