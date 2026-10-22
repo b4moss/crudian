@@ -21,7 +21,7 @@
 | 項目 | 値 |
 |------|-----|
 | 対象（JS） | `@b4moss/crudian/bun-sqlite` / `drizzle` / `prisma` / `libsql` |
-| 対象（Go） | `github.com/b4moss/crudian/go/gorm` / `.../go/libsql`（共有 `go/crudian`） |
+| 対象（Go） | `github.com/b4moss/crudian/packages/go/gorm` / `.../go/libsql`（共有 `go/crudian`） |
 | 契約の正 | 共有層の語彙。参照実装の詳細確認は bun-sqlite。他アダプタ・Go は同等観測 |
 | 入口 | 既存どおり（JS: `createCrud(db)`、Go: `CreateCrud(db)`） |
 | 名前 | JS: `exists` / Go: `Exists`（`duplicate`／`Duplicate`＝行コピーと混同しない） |
@@ -159,7 +159,7 @@ DB: 呼び出し側注入の `bun:sqlite` `Database`（テストでは `:memory:
 
 ## Go gorm
 
-パッケージ: `github.com/b4moss/crudian/go/gorm`  
+パッケージ: `github.com/b4moss/crudian/packages/go/gorm`  
 入口: `CreateCrud(db *gorm.DB)`（共有 `crudian.Exists` を埋め込み公開）  
 ランタイム / テスト: Go（現行モジュールの `testing`）+ インメモリ / 一時 SQLite
 
@@ -183,7 +183,7 @@ DB: 呼び出し側注入の `bun:sqlite` `Database`（テストでは `:memory:
 
 ## Go libsql
 
-パッケージ: `github.com/b4moss/crudian/go/libsql`  
+パッケージ: `github.com/b4moss/crudian/packages/go/libsql`  
 入口・Dialect は [`../go/module.md`](../go/module.md) どおり。
 
 ### libsql.exists
@@ -228,7 +228,7 @@ DB: 呼び出し側注入の `bun:sqlite` `Database`（テストでは `:memory:
 
 | 項目 | 値 |
 |------|-----|
-| 対象（必須） | Go `github.com/b4moss/crudian/go/gorm`（共有 `go/crudian`） |
+| 対象（必須） | Go `github.com/b4moss/crudian/packages/go/gorm`（共有 `go/crudian`） |
 | 対象（no-op 観測） | Go `.../go/libsql` |
 | 対象外（本節） | JS 全アダプタ（→ [#73](https://github.com/b4moss/crudian/issues/73) / [`../dialect/mysql-postgres.md`](../dialect/mysql-postgres.md)）、PHP、接続 URL オープン、env からの秘密情報、Dialect インタフェース |
 | 所有 | 接続の生成・所有は呼び出し側。`CreateCrud` は接続を開かない（既存方針） |
@@ -262,7 +262,7 @@ DB: 呼び出し側注入の `bun:sqlite` `Database`（テストでは `:memory:
 
 ## crudian.ApplyPool（共有ヘルパ）
 
-パッケージ: `github.com/b4moss/crudian/go/crudian`  
+パッケージ: `github.com/b4moss/crudian/packages/go/crudian`  
 対象: 任意の `*sql.DB`
 
 ### crudian.applyPool
@@ -285,7 +285,7 @@ DB: 呼び出し側注入の `bun:sqlite` `Database`（テストでは `:memory:
 
 ## Go gorm（適用あり）
 
-パッケージ: `github.com/b4moss/crudian/go/gorm`  
+パッケージ: `github.com/b4moss/crudian/packages/go/gorm`  
 入口: `CreateCrud(db *gorm.DB, opts ...crudian.Options)`  
 ランタイム / テスト: Go `testing` + SQLite（既存フィクスチャ）
 
@@ -312,7 +312,7 @@ DB: 呼び出し側注入の `bun:sqlite` `Database`（テストでは `:memory:
 
 ## Go libsql（no-op）
 
-パッケージ: `github.com/b4moss/crudian/go/libsql`  
+パッケージ: `github.com/b4moss/crudian/packages/go/libsql`  
 入口: `CreateCrud(db *sql.DB, opts ...crudian.Options)`
 
 ### libsql.poolNoop

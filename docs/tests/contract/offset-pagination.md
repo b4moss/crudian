@@ -19,7 +19,7 @@
 | 項目 | 値 |
 |------|-----|
 | 対象（JS） | `@b4moss/crudian/bun-sqlite` / `drizzle` / `prisma` / `libsql` |
-| 対象（Go） | `github.com/b4moss/crudian/go/gorm` / `.../go/libsql`（共有 `go/crudian`） |
+| 対象（Go） | `github.com/b4moss/crudian/packages/go/gorm` / `.../go/libsql`（共有 `go/crudian`） |
 | 契約の正 | 共有層の語彙。参照実装の詳細確認は bun-sqlite。他アダプタ・Go は同等観測 |
 | 入口 | 既存どおり（JS: `createCrud(db)`、Go: `CreateCrud(db)`） |
 | `SearchQuery` 追加 | `paging?: "offset" \| "cursor"`（**未指定 = `"offset"`**）、`offset?: number`（offset 時。未指定 = `0`） |
@@ -202,8 +202,8 @@ DB: 呼び出し側注入の `bun:sqlite` `Database`（テストでは `:memory:
 
 ## Go（同等契約）
 
-パッケージ: `github.com/b4moss/crudian/go/gorm` / `.../go/libsql`  
-共有実装: `github.com/b4moss/crudian/go/crudian`  
+パッケージ: `github.com/b4moss/crudian/packages/go/gorm` / `.../go/libsql`  
+共有実装: `github.com/b4moss/crudian/packages/go/crudian`  
 ランタイム / テスト: Go 1.26+ + `testing`
 
 ### gorm.searchPaging / libsql.searchPaging
@@ -259,7 +259,7 @@ DB: 呼び出し側注入の `bun:sqlite` `Database`（テストでは `:memory:
 | 項目 | 値 |
 |------|-----|
 | 対象（JS） | `@b4moss/crudian/bun-sqlite` / `drizzle` / `prisma` / `libsql` |
-| 対象（Go） | `github.com/b4moss/crudian/go/gorm` / `.../go/libsql`（共有 `go/crudian`） |
+| 対象（Go） | `github.com/b4moss/crudian/packages/go/gorm` / `.../go/libsql`（共有 `go/crudian`） |
 | 契約の正 | 共有層の語彙。参照実装の詳細確認は bun-sqlite。他アダプタ・Go は同等観測 |
 | 入口（JS） | `createCrud(db, options?)`。`options?: { pk?: string }` |
 | 入口（Go） | `CreateCrud(db, opts ...Options)`。`Options{ PK string }` |
@@ -466,8 +466,8 @@ DB: 呼び出し側注入の `bun:sqlite` `Database`（テストでは `:memory:
 
 ### Go（同等契約・#72）
 
-パッケージ: `github.com/b4moss/crudian/go/gorm` / `.../go/libsql`  
-共有実装: `github.com/b4moss/crudian/go/crudian`  
+パッケージ: `github.com/b4moss/crudian/packages/go/gorm` / `.../go/libsql`  
+共有実装: `github.com/b4moss/crudian/packages/go/crudian`  
 ランタイム / テスト: Go 1.26+ + `testing`
 
 #### gorm.createCrudPk / libsql.createCrudPk
