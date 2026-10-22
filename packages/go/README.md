@@ -1,4 +1,4 @@
-# Go module (`github.com/b4moss/crudian/go`)
+# Go module (`github.com/b4moss/crudian/packages/go`)
 
 CRUD facade matching the JavaScript `@b4moss/crudian` contract, for **GORM** and **libSQL**.
 
@@ -10,18 +10,21 @@ API shape: **synchronous methods with `context.Context` as the first argument** 
 
 Go does not use an npm-like registry for this package. You depend on the **module path**; the toolchain fetches the matching **git tag** (often via `proxy.golang.org` as a cache).
 
+The module lives at `packages/go/` in this monorepo. The module path therefore includes that path segment (Go nested-module rule). Consumers resolve the nested-module tag `packages/go/vX.Y.Z` as SemVer `vX.Y.Z`.
+
 ```bash
-go get github.com/b4moss/crudian/go@v0.11.0
+go get github.com/b4moss/crudian/packages/go@v0.12.1
 ```
 
 Or in `go.mod`:
 
 ```go
-require github.com/b4moss/crudian/go v0.11.0
+require github.com/b4moss/crudian/packages/go v0.12.1
 ```
+
 | Item | Value |
 |------|--------|
-| Module path | `github.com/b4moss/crudian/go` |
+| Module path | `github.com/b4moss/crudian/packages/go` |
 | Source tree | `packages/go/` in this repository |
 | Version file | [`VERSION`](./VERSION) |
 | Git tag | **`packages/go/vX.Y.Z`** (must match `VERSION`) |
@@ -29,13 +32,15 @@ require github.com/b4moss/crudian/go v0.11.0
 
 Language versions are independent of the npm package.
 
+> **Migration (≤0.12.0):** Earlier releases declared `github.com/b4moss/crudian/go` while living under `packages/go/`, so `go get` failed with a path mismatch. From **0.12.1** the module path matches the tree. Update imports to `.../packages/go/...` and drop any `replace` / vendoring workarounds.
+
 ## Packages
 
 | Import | Entry | Injected client |
 |--------|--------|-----------------|
-| `.../go/gorm` | `gorm.CreateCrud(db, opts...)` | `*gorm.DB` (SQLite / Postgres / MySQL) |
-| `.../go/libsql` | `libsql.CreateCrud(db)` | `*sql.DB` (SQLite-compatible) |
-| `.../go/crudian` | shared types | `Where`, Dialects, `Crud`, queries, `PoolOptions` |
+| `.../packages/go/gorm` | `gorm.CreateCrud(db, opts...)` | `*gorm.DB` (SQLite / Postgres / MySQL) |
+| `.../packages/go/libsql` | `libsql.CreateCrud(db)` | `*sql.DB` (SQLite-compatible) |
+| `.../packages/go/crudian` | shared types | `Where`, Dialects, `Crud`, queries, `PoolOptions` |
 
 `CreateCrud` never opens connections. The caller owns the DB and can use `crud.DB` for escapes.
 
@@ -99,8 +104,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/b4moss/crudian/go/crudian"
-	"github.com/b4moss/crudian/go/gorm"
+	"github.com/b4moss/crudian/packages/go/crudian"
+	"github.com/b4moss/crudian/packages/go/gorm"
 	"github.com/glebarez/sqlite"
 	gormio "gorm.io/gorm"
 )
@@ -128,8 +133,8 @@ func main() {
 
 ```go
 import (
-	"github.com/b4moss/crudian/go/crudian"
-	"github.com/b4moss/crudian/go/gorm"
+	"github.com/b4moss/crudian/packages/go/crudian"
+	"github.com/b4moss/crudian/packages/go/gorm"
 	"gorm.io/driver/postgres" // or gorm.io/driver/mysql
 	gormio "gorm.io/gorm"
 )
@@ -151,8 +156,8 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/b4moss/crudian/go/crudian"
-	"github.com/b4moss/crudian/go/libsql"
+	"github.com/b4moss/crudian/packages/go/crudian"
+	"github.com/b4moss/crudian/packages/go/libsql"
 	_ "github.com/tursodatabase/libsql-client-go/libsql"
 	_ "modernc.org/sqlite"
 )
