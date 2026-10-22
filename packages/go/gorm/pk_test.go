@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/b4moss/crudian/go/crudian"
-	gormcrud "github.com/b4moss/crudian/go/gorm"
+	"github.com/b4moss/crudian/packages/go/crudian"
+	gormcrud "github.com/b4moss/crudian/packages/go/gorm"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )

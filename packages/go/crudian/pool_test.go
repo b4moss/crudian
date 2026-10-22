@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/b4moss/crudian/go/crudian"
+	"github.com/b4moss/crudian/packages/go/crudian"
 	_ "modernc.org/sqlite"
 )
 

@@ -4,20 +4,20 @@
 [![Coverage](https://codecov.io/gh/b4moss/crudian/graph/badge.svg)](https://codecov.io/gh/b4moss/crudian)
 [![npm](https://img.shields.io/npm/v/@b4moss/crudian)](https://www.npmjs.com/package/@b4moss/crudian)
 [![Packagist](https://img.shields.io/packagist/v/b4moss/crudian)](https://packagist.org/packages/b4moss/crudian)
-[![Go Reference](https://pkg.go.dev/badge/github.com/b4moss/crudian/go.svg)](https://pkg.go.dev/github.com/b4moss/crudian/go)
+[![Go Reference](https://pkg.go.dev/badge/github.com/b4moss/crudian/packages/go.svg)](https://pkg.go.dev/github.com/b4moss/crudian/packages/go)
 [![Release](https://img.shields.io/github/v/release/b4moss/crudian)](https://github.com/b4moss/crudian/releases)
 [![License](https://img.shields.io/github/license/b4moss/crudian)](https://github.com/b4moss/crudian/blob/main/LICENSE)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/b4moss/crudian/badge)](https://scorecard.dev/viewer/?uri=github.com/b4moss/crudian)
 
 CRUD abstraction for DDD repositories, packaged per language.
 
-Versions are **independent per language**. A repo milestone name (for example planning `v0.7.0`) does not force every language package to publish that number. Language lines may diverge; today both npm and the Go module are at **`0.11.0`** (`packages/js/package.json` / `packages/go/VERSION`).
+Versions are **independent per language**. A repo milestone name (for example planning `v0.7.0`) does not force every language package to publish that number. Language lines may diverge; today npm / Packagist are at **`0.12.0`**, Go at **`0.12.1`** (`packages/js/package.json` / `packages/php/VERSION` / `packages/go/VERSION`).
 
 ## JavaScript / TypeScript
 
 npm package: **[@b4moss/crudian](./packages/js)** (`packages/js`)
 
-Current published line: see `packages/js/package.json` (**`0.11.0`**).
+Current published line: see `packages/js/package.json` (**`0.12.0`**).
 
 ```bash
 npm install @b4moss/crudian
@@ -37,20 +37,21 @@ Full method samples: [`packages/js/README.md`](./packages/js/README.md).
 
 ## Go
 
-Go module: **[github.com/b4moss/crudian/go](./packages/go)** (`packages/go`)
+Go module: **[github.com/b4moss/crudian/packages/go](./packages/go)** (`packages/go`)
 
 There is **no npm-style package registry upload**. The canonical identity is the **module path** on GitHub; consumers resolve a **git tag** with the Go toolchain (`go get` / `go.mod`). The public module proxy caches source; it is not a separate store you publish tarballs into.
 
-Current Go line: `packages/go/VERSION` → **`0.11.0`**, git tag **`packages/go/v0.11.0`** (nested-module tag form).
+The module path includes `packages/go` so it matches the monorepo layout (Go nested-module rule). Current Go line: `packages/go/VERSION` → **`0.12.1`**, git tag **`packages/go/v0.12.1`**.
 
 ```bash
-go get github.com/b4moss/crudian/go@v0.11.0
+go get github.com/b4moss/crudian/packages/go@v0.12.1
 ```
+
 | Import path | Role |
 |-------------|------|
-| `github.com/b4moss/crudian/go/gorm` | GORM adapter (SQLite / Postgres / MySQL) |
-| `github.com/b4moss/crudian/go/libsql` | libSQL (`database/sql`) adapter (SQLite-compatible) |
-| `github.com/b4moss/crudian/go/crudian` | Shared contract, `Where`, Dialect, CRUD, Pool |
+| `github.com/b4moss/crudian/packages/go/gorm` | GORM adapter (SQLite / Postgres / MySQL) |
+| `github.com/b4moss/crudian/packages/go/libsql` | libSQL (`database/sql`) adapter (SQLite-compatible) |
+| `github.com/b4moss/crudian/packages/go/crudian` | Shared contract, `Where`, Dialect, CRUD, Pool |
 
 Usage, drivers, and API notes: [`packages/go/README.md`](./packages/go/README.md). Dialect acceptance: [`docs/tests/dialect/mysql-postgres.md`](./docs/tests/dialect/mysql-postgres.md).
 

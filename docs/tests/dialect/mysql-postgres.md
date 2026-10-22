@@ -85,7 +85,7 @@
 
 ## Go 共有 Dialect 拡充
 
-パッケージ: `github.com/b4moss/crudian/go/crudian`  
+パッケージ: `github.com/b4moss/crudian/packages/go/crudian`  
 前提: [`../go/module.md`](../go/module.md) の薄い Dialect（QuoteIdent / Placeholder）を **拡充**する
 
 ### go.dialect.sqlite
@@ -176,7 +176,7 @@
 
 ## Go PostgresDialect + GORM
 
-パッケージ: `github.com/b4moss/crudian/go/gorm`  
+パッケージ: `github.com/b4moss/crudian/packages/go/gorm`  
 入口: `CreateCrud(db, opts...)` に dialect / driver 明示（例: Options に Dialect または Driver 名）。未指定かつ SQLite 接続の既存経路は SqliteDialect のまま  
 テスト: Go `testing` + docker Postgres + `gorm.io/driver/postgres`
 

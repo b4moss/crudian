@@ -138,7 +138,7 @@ Packagist **`b4moss/crudian`** 単一パッケージを予定。方針・層分�
 
 | パス | 対象 |
 |------|------|
-| `packages/go` | Go module `github.com/b4moss/crudian/go`（`crudian` / `gorm` / `libsql`） |
+| `packages/go` | Go module `github.com/b4moss/crudian/packages/go`（`crudian` / `gorm` / `libsql`） |
 
 詳細: [`specs/go/`](./specs/go/)
 
@@ -181,7 +181,7 @@ Packagist **`b4moss/crudian`** 単一パッケージを予定。方針・層分�
 
 - **言語（配布物）ごとに独立した SemVer** を持つ
   - JS/TS: `packages/js/package.json` → npm `@b4moss/crudian`（現行 **`0.12.0`**）。git タグ `vX.Y.Z`
-  - Go: `packages/go/VERSION` → module `github.com/b4moss/crudian/go`（現行 **`0.12.0`**）。git タグ `packages/go/vX.Y.Z`
+  - Go: `packages/go/VERSION` → module `github.com/b4moss/crudian/packages/go`（現行 **`0.12.1`**）。git タグ `packages/go/vX.Y.Z`
   - PHP: `packages/php/VERSION` → Packagist `b4moss/crudian`（配布リポ `b4moss/crudian-php`）。git タグ monorepo `packages/php/vX.Y.Z` / dist `vX.Y.Z`（現行 **`0.12.0`**）
 - **同一言語パッケージ内**ではアダプタ別バージョンは切らない（JS の bun-sqlite / drizzle / prisma / libsql / typeorm、Go の gorm / libsql、PHP の PDO / libSQL はいずれも単一配布物に同梱）
 - 言語間で版が揃わない・飛ぶことは **許容**（歴史的には npm `0.6.0` のまま Go だけ `0.7.0` を初公開した）

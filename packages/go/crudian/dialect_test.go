@@ -3,7 +3,7 @@ package crudian_test
 import (
 	"testing"
 
-	"github.com/b4moss/crudian/go/crudian"
+	"github.com/b4moss/crudian/packages/go/crudian"
 )
 
 func TestSqliteDialect(t *testing.T) {

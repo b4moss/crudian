@@ -5,8 +5,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/b4moss/crudian/go/crudian"
-	gormcrud "github.com/b4moss/crudian/go/gorm"
+	"github.com/b4moss/crudian/packages/go/crudian"
+	gormcrud "github.com/b4moss/crudian/packages/go/gorm"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
