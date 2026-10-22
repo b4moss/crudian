@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Decide whether the Go module should be "published" from the current HEAD.
 # Nested module tag convention: packages/go/vX.Y.Z
-# (module path: github.com/b4moss/crudian/go)
+# (module path: github.com/b4moss/crudian/packages/go)
 #
 # Outputs (GITHUB_OUTPUT when set):
 #   skip=true|false
