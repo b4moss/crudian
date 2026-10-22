@@ -20,7 +20,7 @@ pillar は [`docs/README.md`](README.md)。現行仕様は [`specs/`](specs/)。
 | **v0.3.0** | Other JS adapters | drizzle / prisma が bun-sqlite と同等 API・テストで通る |
 | **v0.5.0** | count / SearchResult.total | `count()` と `search`/`list` の `total` が bun-sqlite / drizzle / prisma で揃う（#47） |
 | **v0.6.0** | libSQL adapter | `@b4moss/crudian/libsql`（`@libsql/client`）が既存契約と同等 API・テストで通る（#42） |
-| **v0.7.0** | Go module | `github.com/b4moss/crudian/go/gorm`（SQLite）と `.../go/libsql` が同等契約で通る（#48） |
+| **v0.7.0** | Go module | `github.com/b4moss/crudian/packages/go/gorm`（SQLite）と `.../go/libsql` が同等契約で通る（#48） |
 | **v0.9.0** | exists | `exists` / `Exists`（boolean 糖衣。入力は `count` と同型。#106）。Go 接続プール／lifetime（GORM 適用・libSQL no-op。#105。JS は #73） |
 | **v0.4.0** | Docker / E2E harness | 全ランタイム 1 コンテナ + Postgres / MySQL / MariaDB 上の E2E 基盤（[#44](https://github.com/b4moss/crudian/issues/44)） |
 | **v0.10.0** | Dialect / MySQL・Postgres | SQL 方言の切り出しと MySQL / Postgres 対応。JS プールもここに載せる（[#73](https://github.com/b4moss/crudian/issues/73)、#105 の JS 分） |
@@ -143,7 +143,7 @@ JS 契約を Go へ移植する（#48）。**Go の公開初版は `0.7.0`**（`
 
 | 機能 | 内容 | 備考 |
 |------|------|------|
-| module | `github.com/b4moss/crudian/go` | 単一 go.mod。パッケージ `crudian` / `gorm` / `libsql` |
+| module | `github.com/b4moss/crudian/packages/go` | 単一 go.mod。パッケージ `crudian` / `gorm` / `libsql` |
 | API | 同期 + `context.Context` | JS sync/async 分裂なし |
 | Dialect | 初手から切る | **いまは Sqlite のみ**。MySQL / Postgres は将来（stub） |
 | `go/gorm` | GORM | 生 `*gorm.DB` 注入。**v0.7.0 は SQLite のみ** |

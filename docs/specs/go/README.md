@@ -18,11 +18,11 @@ JS 版（`@b4moss/crudian`）と同等の CRUD 契約を持つ Go module の現�
 
 | 項目 | 値 |
 |------|-----|
-| module | `github.com/b4moss/crudian/go` |
-| 配置 | `packages/go/` |
-| 共有 | `github.com/b4moss/crudian/go/crudian` |
-| GORM adapter | `github.com/b4moss/crudian/go/gorm` |
-| libSQL adapter | `github.com/b4moss/crudian/go/libsql` |
+| module | `github.com/b4moss/crudian/packages/go` |
+| 配置 | `packages/go/`（module path と一致。Go ネスト module 規則） |
+| 共有 | `github.com/b4moss/crudian/packages/go/crudian` |
+| GORM adapter | `github.com/b4moss/crudian/packages/go/gorm` |
+| libSQL adapter | `github.com/b4moss/crudian/packages/go/libsql` |
 | Go バージョン | **1.26.x**（docker イメージに合わせる） |
 
 ## 層分割
@@ -51,8 +51,8 @@ JS の bun-sqlite を契約の正とし、Go は **同等の観測結果**で測
 ```go
 import (
   "context"
-  "github.com/b4moss/crudian/go/crudian"
-  "github.com/b4moss/crudian/go/gorm"
+  "github.com/b4moss/crudian/packages/go/crudian"
+  "github.com/b4moss/crudian/packages/go/gorm"
 )
 
 crud := gorm.CreateCrud(db) // *gorm.DB を注入。接続は呼び出し側
@@ -135,10 +135,10 @@ type Executor interface {
 
 ## CI / 梱包 / 版
 
-- CI: [`.github/CI.md`](../../../.github/CI.md) — `packages/go` 変更時のみ lint（`gofmt` / `vet`）+ `go test ./...`（Go 1.26）
-- 公開版: `packages/go/VERSION`（初版 **0.7.0**）。npm の版とは独立
+- CI: [`.github/CI.md`](../../../.github/CI.md) — `packages/go` 変更時のみ lint（`gofmt` / `vet`）+ `go test ./...` + 外部消費者検証（Go 1.26）
+- 公開版: `packages/go/VERSION`（初版 **0.7.0**。現行は `VERSION` を正とする）。npm の版とは独立
 - git タグ: **`packages/go/vX.Y.Z`**（ネスト module の慣習）。ルート `vX.Y.Z` は JS npm 用
-- 配布の正は **module path**（`github.com/b4moss/crudian/go`）。独自パッケージレジストリへの upload はしない。`go get` が git タグを解決する（proxy.golang.org はキャッシュ）
+- 配布の正は **module path**（`github.com/b4moss/crudian/packages/go`）。独自パッケージレジストリへの upload はしない。`go get` が git タグを解決する（proxy.golang.org はキャッシュ）
 - CD: `.github/workflows/publish-go.yml` — タグ存在時に GitHub Release + proxy ping
 - README: ルート / `packages/go`（英語）
 
@@ -153,7 +153,7 @@ type Executor interface {
 
 | # | 項目 | 決定 |
 |---|------|------|
-| 1 | Module path | `github.com/b4moss/crudian/go` + パッケージ `gorm` / `libsql` / `crudian` |
+| 1 | Module path | `github.com/b4moss/crudian/packages/go` + パッケージ `gorm` / `libsql` / `crudian`（配置と一致。≤0.12.0 の `.../crudian/go` は `go get` 不能だったため 0.12.1 で修正） |
 | 2 | API 形 | 同期 + `context.Context`（全メソッド） |
 | 3 | Dialect | インタフェース。Sqlite / Postgres / MySQL 実装済み（#73） |
 | 4 | libSQL | 公式 `libsql-client-go` 第一候補（local `file://` は companion sqlite 要） |
@@ -161,7 +161,7 @@ type Executor interface {
 | 6 | マイルストーン | v0.7.0（Go 公開 SemVer 初版も 0.7.0） |
 | 7 | PK / cursor | 既定 `id`。`Options.PK` で変更可（#72）。cursor は PK 昇順 |
 | 8 | 言語間バージョン | 独立可（npm 据え置きで Go のみリリース可） |
-| 9 | 配布 | module path + `packages/go/v*` タグ。レジストリ upload なし |
+| 9 | 配布 | module path（`.../packages/go`）+ `packages/go/v*` タグ。レジストリ upload なし |
 
 ## 関連
 
