@@ -50,7 +50,7 @@ Expected for a tree whose `package.json` version is **already on npm**: decide s
 
 | Workflow | Trigger | Scope |
 |----------|---------|--------|
-| `CI` | PR → `develop` / `dev-v*`; push → those + `main` | Gate scripts + lint/tests per touched package |
+| `CI` | PR → `develop` / `dev-v*` / `main`; push → those + `main` | Gate scripts + lint/tests per touched package |
 | `CodeQL` | PR → `main` only | Advanced setup（default setup は無効）。`release` 等の PR では走らない |
 | `Docker image` | PR when `docker/**` / `.devcontainer/**` change | Image build + runtime check (not E2E) |
 | `Publish npm` | push → `release` | `@b4moss/crudian` when tag/`package.json` warrant |
@@ -88,11 +88,12 @@ Required status check for branch protection should be **`CI result`** (not indiv
 ### Go (`publish-go.yml`)
 
 - Version file: `packages/go/VERSION` (first public line: **0.7.0**)
-- Nested-module tag: **`packages/go/vX.Y.Z`** (required by Go for `packages/go` + module path `github.com/b4moss/crudian/go`)
+- Nested-module tag: **`packages/go/vX.Y.Z`** (required by Go when the module lives at `packages/go/` with module path `github.com/b4moss/crudian/packages/go`)
 - Script: `.github/scripts/should-publish-go.sh` — skip if no tag, tag not ancestor, or GitHub Release already exists.
 - On publish: `go vet` + `go test`, create GitHub Release, best-effort `proxy.golang.org` ping.
 - **No npm-style registry upload.** Canonical identity is the module path + git tag; `go get` resolves them (proxy is a cache).
 - Independent of npm: publishing Go `0.7.0` does not require bumping `@b4moss/crudian` past `0.6.0`. Root tag `v0.7.0` alone does not publish Go.
+- CI also runs `.github/scripts/verify-go-module-consumer.sh` (path alignment + throwaway consumer `go get` / import / build) when `packages/go` changes.
 
 ### PHP (`publish-composer.yml` + dist `sync-from-monorepo.yml`)
 
