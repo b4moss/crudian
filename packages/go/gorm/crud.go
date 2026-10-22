@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/b4moss/crudian/go/crudian"
+	"github.com/b4moss/crudian/packages/go/crudian"
 	gormio "gorm.io/gorm"
 )
 
