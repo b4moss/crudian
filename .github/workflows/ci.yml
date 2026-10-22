@@ -12,6 +12,7 @@ on:
     branches:
       - develop
       - "dev-v*"
+      - main
   push:
     branches:
       - develop
@@ -355,6 +356,19 @@ jobs:
       - name: Test with coverage
         if: steps.skip.outputs.hit != 'true'
         run: go test -coverprofile=coverage.out -covermode=atomic -coverpkg=./... ./...
+
+      - name: Verify consumer (local replace)
+        if: steps.skip.outputs.hit != 'true'
+        working-directory: ${{ github.workspace }}
+        run: bash .github/scripts/verify-go-module-consumer.sh
+
+      - name: Verify consumer (remote go get @ commit)
+        if: steps.skip.outputs.hit != 'true'
+        working-directory: ${{ github.workspace }}
+        env:
+          # PR head SHA (or push SHA) so go get resolves the nested module at this commit.
+          GO_MODULE_REF: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: bash .github/scripts/verify-go-module-consumer.sh
 
       - name: Upload Go coverage to Codecov
         if: steps.skip.outputs.hit != 'true'
