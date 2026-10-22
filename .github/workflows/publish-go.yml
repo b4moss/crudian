@@ -1,6 +1,6 @@
 name: Publish Go
 
-# Makes github.com/b4moss/crudian/go discoverable when packages/go version is tagged.
+# Makes github.com/b4moss/crudian/packages/go discoverable when packages/go version is tagged.
 # Tag form: packages/go/vX.Y.Z (must match packages/go/VERSION).
 # See .github/CI.md
 
@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   publish:
-    name: publish github.com/b4moss/crudian/go
+    name: publish github.com/b4moss/crudian/packages/go
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -71,7 +71,7 @@ jobs:
           fi
           if ! out="$(gh release create "$TAG" \
             --title "Go module v${VERSION}" \
-            --notes "Go module \`github.com/b4moss/crudian/go\` v${VERSION} (GORM SQLite + libSQL + Postgres/MySQL)." \
+            --notes "Go module \`github.com/b4moss/crudian/packages/go\` v${VERSION} (GORM SQLite + libSQL + Postgres/MySQL)." \
             --verify-tag 2>&1)"; then
             echo "$out"
             if echo "$out" | grep -qi 'already exists'; then
@@ -88,5 +88,5 @@ jobs:
         run: |
           set -euo pipefail
           # Ask the public proxy to fetch this version (best-effort indexing).
-          curl -fsSL "https://proxy.golang.org/github.com/b4moss/crudian/go/@v/v${VERSION}.info" || \
+          curl -fsSL "https://proxy.golang.org/github.com/b4moss/crudian/packages/go/@v/v${VERSION}.info" || \
             echo "proxy ping returned non-zero (tag may need a moment); release was created."
