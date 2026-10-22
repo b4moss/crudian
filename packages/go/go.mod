@@ -1,4 +1,4 @@
-module github.com/b4moss/crudian/go
+module github.com/b4moss/crudian/packages/go
 
 go 1.25.0
 
