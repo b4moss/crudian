@@ -16,8 +16,8 @@ API は **同期 + `context.Context`**。JS の sync/async 分裂は持たない
 
 | 項目 | 値 |
 |------|-----|
-| 対象 | `github.com/b4moss/crudian/go/gorm` / `github.com/b4moss/crudian/go/libsql` |
-| 共有 | `github.com/b4moss/crudian/go/crudian`（型・`Where`・Dialect・CRUD） |
+| 対象 | `github.com/b4moss/crudian/packages/go/gorm` / `github.com/b4moss/crudian/packages/go/libsql` |
+| 共有 | `github.com/b4moss/crudian/packages/go/crudian`（型・`Where`・Dialect・CRUD） |
 | 契約 | JS bun-sqlite / prisma / libsql と同等の語彙・振る舞い |
 | ランタイム / テスト | **Go 1.26** + `testing`（`go.mod` は 1.25+。CI / docker は 1.26）。アダプタ固有 |
 | DB | 呼び出し側が接続を注入。テストは一時ファイル SQLite（または TX 安全な `:memory:`）。クラウド資格情報不要 |
@@ -71,7 +71,7 @@ API は **同期 + `context.Context`**。JS の sync/async 分裂は持たない
 
 ## GORM アダプタ（SQLite）
 
-パッケージ: `github.com/b4moss/crudian/go/gorm`  
+パッケージ: `github.com/b4moss/crudian/packages/go/gorm`  
 入口: `CreateCrud(db *gorm.DB)`（生 DB を公開）  
 Dialect: Sqlite
 
@@ -170,7 +170,7 @@ Dialect: Sqlite
 
 ## libSQL アダプタ
 
-パッケージ: `github.com/b4moss/crudian/go/libsql`  
+パッケージ: `github.com/b4moss/crudian/packages/go/libsql`  
 入口: `CreateCrud(db *sql.DB)`（公式 driver 登録済みの `*sql.DB`。生 DB を公開）  
 Dialect: Sqlite（libSQL 互換）
 
@@ -230,12 +230,29 @@ Dialect: Sqlite（libSQL 互換）
 
 #### テスト：正常系
 
-- `go.mod` の module path が `github.com/b4moss/crudian/go`
-- import `.../go/gorm` / `.../go/libsql` / `.../go/crudian` が解決できる
+- `go.mod` の module path が `github.com/b4moss/crudian/packages/go`（配置 `packages/go/` と一致。Go のネスト module 規則）
+- import `.../packages/go/gorm` / `.../packages/go/libsql` / `.../packages/go/crudian` が解決できる
+- git タグ形式は **`packages/go/vX.Y.Z`**（`VERSION` と一致）
 
 #### テスト: 異常系
 
-- （該当なし）
+- module path が配置パスと不一致のとき、外部 `go get` はパス不一致で失敗する（回帰防止の正は `goModuleConsumer`）
+
+### goModuleConsumer
+
+外部利用者が monorepo 外から module を取得・import・ビルドできること。  
+実装: [`.github/scripts/verify-go-module-consumer.sh`](../../../.github/scripts/verify-go-module-consumer.sh)（CI の Go ジョブから実行）。
+
+#### テスト：正常系
+
+- `packages/go/go.mod` の module path がリポジトリ相対パス `packages/go` と一致する
+- 一時ディレクトリの消費者 module が `github.com/b4moss/crudian/packages/go/crudian` と `.../gorm` を import して `go build` できる
+  - 既定: ローカル `replace`（オフライン可）
+  - CI（任意）: `GO_MODULE_REF` にコミット SHA 等を渡し `GOPROXY=direct go get` でリモート解決
+
+#### テスト: 異常系
+
+- module path 不一致のツリーでは検証スクリプトが非ゼロで失敗する
 
 ----
 
