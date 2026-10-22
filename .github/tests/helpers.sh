@@ -63,7 +63,7 @@ EOF
   echo "MIT" >"$dir/packages/js/LICENSE"
   echo "readme local" >"$dir/packages/js/README.md"
   echo "0.7.0" >"$dir/packages/go/VERSION"
-  echo 'module github.com/b4moss/crudian/go' >"$dir/packages/go/go.mod"
+  echo 'module github.com/b4moss/crudian/packages/go' >"$dir/packages/go/go.mod"
   echo "0.12.0" >"$dir/packages/php/VERSION"
   cat >"$dir/packages/php/composer.json" <<'EOF'
 {
