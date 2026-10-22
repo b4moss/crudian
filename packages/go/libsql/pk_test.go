@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/b4moss/crudian/go/crudian"
-	libsqlcrud "github.com/b4moss/crudian/go/libsql"
+	"github.com/b4moss/crudian/packages/go/crudian"
+	libsqlcrud "github.com/b4moss/crudian/packages/go/libsql"
 	_ "github.com/tursodatabase/libsql-client-go/libsql"
 	_ "modernc.org/sqlite" // required by libsql-client-go for file:// URLs
 )
