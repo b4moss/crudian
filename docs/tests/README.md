@@ -2,7 +2,7 @@
 
 テスト仕様（TDD の入力）。**`docs/specs/` と同じドメイン切り**。SemVer フォルダは使わない。
 
-書き方・氷山パターン: charter の [`tdd.md`](../charter/tdd.md)。  
+書き方・氷山パターン: charter の [`tdd.md`](https://github.com/b4moss/charter/blob/v1/docs/charter/tech/tdd.md)。  
 pillar: [`../README.md`](../README.md)  
 仕様: [`../specs/`](../specs/)  
 ロードマップ: [`../roadmap.md`](../roadmap.md)
